@@ -1,0 +1,119 @@
+name: Build pack
+
+on:
+  workflow_dispatch:
+    inputs:
+      pack:
+        description: Pack to build
+        type: choice
+        options: [bmad]
+        default: bmad
+      version:
+        description: Pack version (semver)
+        type: string
+        required: true
+        default: "6.3.0"
+      sign:
+        description: Sign + attest with cosign (OIDC keyless)
+        type: boolean
+        default: true
+      publish:
+        description: Create GitHub Release and upload artifacts
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'bmad-v*'
+
+# Required for:
+#   - id-token: cosign keyless OIDC signing (Sigstore / Rekor)
+#   - contents: gh release create
+#   - attestations: github native attestation (in addition to cosign)
+permissions:
+  id-token: write
+  contents: write
+  attestations: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0  # v2.12.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Setup Node (for npx bmad-method)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: '20'
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.53.2/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Install cosign
+        if: inputs.sign
+        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a  # v3.8.1
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Determine pack + version
+        id: params
+        run: |
+          # On tag push, parse "bmad-v6.3.0" → pack=bmad, version=6.3.0
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            PACK="${TAG%%-v*}"
+            VERSION="${TAG#*-v}"
+          else
+            PACK="${{ inputs.pack }}"
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "pack=${PACK}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "[params] pack=${PACK} version=${VERSION}"
+
+      - name: Build pack
+        env:
+          BMAD_VERSION: ${{ steps.params.outputs.version }}
+          COSIGN: ${{ inputs.sign && '1' || '0' }}
+        run: |
+          case "${{ steps.params.outputs.pack }}" in
+            bmad) bash scripts/build-bmad.sh ;;
+            *)    echo "unknown pack: ${{ steps.params.outputs.pack }}"; exit 1 ;;
+          esac
+
+      - name: Attest provenance (GitHub native)
+        if: inputs.sign
+        uses: actions/attest-build-provenance@5e9cb68e95676991667494a6a4e59b8a2f13e1d7  # v1.3.3
+        with:
+          subject-path: 'artifacts/*-arcaven.tar.gz'
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: ${{ steps.params.outputs.pack }}-${{ steps.params.outputs.version }}
+          path: artifacts/
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: inputs.publish || github.ref_type == 'tag'
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191  # v2.0.8
+        with:
+          name: ${{ steps.params.outputs.pack }} ${{ steps.params.outputs.version }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('{0}-v{1}', steps.params.outputs.pack, steps.params.outputs.version) }}
+          draft: true
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.sig
+            artifacts/*.bundle
+            artifacts/install.meta.yaml
+            artifacts/file-manifest.csv

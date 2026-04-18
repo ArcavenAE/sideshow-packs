@@ -1,0 +1,13 @@
+Copyright (c) 2026 Arcaven. All rights reserved.
+
+This repository contains proprietary build tooling and configuration for
+distributing third-party content packs. Build outputs (signed tarballs)
+contain material from upstream projects under their own licenses;
+consult each pack's install.meta.yaml and SBOM for upstream
+attribution.
+
+This repository is private and not offered for redistribution. A
+stripped-down public mirror of the build tooling (without proprietary
+configuration or non-redistributable pack inputs) may be published
+separately under a permissive license. Until then, no rights are
+granted to copy, modify, or distribute this repository's contents.
