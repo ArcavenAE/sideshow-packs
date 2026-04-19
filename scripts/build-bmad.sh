@@ -71,6 +71,28 @@ mkdir -p "${PACK_STAGE}"
 cp -R "${INSTALL_ROOT}/_bmad/." "${PACK_STAGE}/"
 [[ -d "${INSTALL_ROOT}/.claude" ]] && cp -R "${INSTALL_ROOT}/.claude" "${PACK_STAGE}/"
 
+# 3b. Emit pack.yaml inside the pack (consumed by sideshow's distribute
+# layer for consumer-repo convention enforcement — aae-orc-794h).
+cat > "${PACK_STAGE}/pack.yaml" <<YAML
+# pack.yaml — consumed by sideshow to apply consumer-repo convention.
+# See: sideshow/docs/consumer-repo-convention.md (aae-orc-794h).
+name: bmad
+version: ${BMAD_VERSION}
+schema_version: 0.1.0
+
+distribute:
+  gitignore:
+    # Pack content — sideshow installs to user-scope; project-local copies
+    # are redundant and conflict with multi-user sideshow installs.
+    - /_bmad/
+    # Tool binding duplicates — sideshow syncs ~/.claude/ at user-scope.
+    - /.claude/commands/bmad-*.md
+    - /.claude/skills/bmad-*/
+    - /.claude/skills/gds-*/
+    - /.claude/skills/cis-*/
+    - /.claude/skills/tea-*/
+YAML
+
 # 4. Emit file-manifest.csv (sha256,size,relpath).
 echo "[build-bmad] computing file manifest"
 (
