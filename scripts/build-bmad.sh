@@ -120,6 +120,8 @@ if [[ ! -f "${BMAD_MANIFEST}" ]]; then
     exit 1
 fi
 
+command -v jq >/dev/null || { echo "error: jq required"; exit 1; }
+
 # 6. Build the tarball (tar from pack stage, gzip).
 TARBALL="${OUT_DIR}/bmad-${BMAD_VERSION}-arcaven.tar.gz"
 echo "[build-bmad] packaging -> ${TARBALL}"
@@ -136,73 +138,97 @@ else
     TARBALL_SIZE=$(stat -c %s "${TARBALL}")
 fi
 
-# 7. Emit install.meta.yaml with full provenance.
+# 7. Emit install.meta.json (canonical) + install.meta.yaml (derived).
+#
+# JSON is built via jq to guarantee structural validity: it's the
+# attestation predicate cosign attest-blob signs. YAML is derived
+# from the JSON via yq -P for human-readable consumption. Building
+# JSON-first avoids YAML quoting/indentation pitfalls when
+# interpolating multi-line module-manifest data.
 PRODUCED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 META="${OUT_DIR}/install.meta.yaml"
+META_JSON="${OUT_DIR}/install.meta.json"
+SIGNING_STATUS="$( [[ "${COSIGN}" == "1" ]] && echo 'signed' || echo 'unsigned-local-build' )"
 
-# Extract module metadata from the bmad manifest for embedding.
-MODULES_YAML=$(yq '.modules' "${BMAD_MANIFEST}")
+# Extract module metadata from the bmad manifest as a JSON array.
+MODULES_JSON="$(yq -o json '.modules' "${BMAD_MANIFEST}")"
 
-cat > "${META}" <<YAML
+jq -n \
+  --arg version "${BMAD_VERSION}" \
+  --arg produced_at "${PRODUCED_AT}" \
+  --arg npm_tarball_url "${UPSTREAM_TARBALL_URL}" \
+  --arg npm_tarball_shasum "${UPSTREAM_TARBALL_SHASUM}" \
+  --arg git_head "${UPSTREAM_GIT_HEAD}" \
+  --arg repository "${UPSTREAM_REPO}" \
+  --argjson modules "${MODULES_JSON:-null}" \
+  --arg modules_csv "${BMAD_MODULES}" \
+  --arg tools "${BMAD_TOOLS}" \
+  --arg tarball "$(basename "${TARBALL}")" \
+  --arg tarball_sha256 "${TARBALL_SHA}" \
+  --argjson tarball_bytes "${TARBALL_SIZE}" \
+  --argjson file_count "${FILE_COUNT}" \
+  --arg signing_status "${SIGNING_STATUS}" \
+  '{
+    schema_version: "0.1.0",
+    pack: {
+      name: "bmad",
+      version: $version,
+      produced_at: $produced_at,
+      produced_by: "sideshow-packs/scripts/build-bmad.sh"
+    },
+    upstream: {
+      npm_package: ("bmad-method@" + $version),
+      npm_tarball_url: $npm_tarball_url,
+      npm_tarball_shasum: $npm_tarball_shasum,
+      git_head: $git_head,
+      repository: $repository
+    },
+    composition: {
+      modules_from_manifest: $modules,
+      tools: [$tools]
+    },
+    install_invocation: {
+      cmd: ("npx --yes bmad-method@" + $version + " install"),
+      flags: [
+        "--directory <workdir>",
+        ("--modules " + $modules_csv),
+        ("--tools " + $tools),
+        "--action install",
+        "--user-name arcaven-ci",
+        "--output-folder _bmad-output",
+        "--yes"
+      ]
+    },
+    artifact: {
+      tarball: $tarball,
+      tarball_sha256: $tarball_sha256,
+      tarball_bytes: $tarball_bytes,
+      file_count: $file_count,
+      layout: [
+        "_config/",
+        "core/",
+        "bmm/",
+        "cis/",
+        "gds/",
+        "tea/",
+        ".claude/"
+      ]
+    },
+    signing: { status: $signing_status }
+  }' > "${META_JSON}"
+
+# Derive YAML from JSON for human consumption.
+yq -P "${META_JSON}" > "${META}"
+# Prepend the comment header that explains the artifact origin.
+{
+    cat <<HEADER
 # Frozen-composition artifact provenance — bmad@${BMAD_VERSION}
 # Produced by sideshow-packs build-bmad.sh.
 # Consumed by sideshow install (verifies signatures + provenance).
 
-schema_version: 0.1.0
-pack:
-  name: bmad
-  version: ${BMAD_VERSION}
-  produced_at: ${PRODUCED_AT}
-  produced_by: sideshow-packs/scripts/build-bmad.sh
-
-upstream:
-  npm_package: bmad-method@${BMAD_VERSION}
-  npm_tarball_url: ${UPSTREAM_TARBALL_URL}
-  npm_tarball_shasum: ${UPSTREAM_TARBALL_SHASUM}
-  git_head: ${UPSTREAM_GIT_HEAD}
-  repository: ${UPSTREAM_REPO}
-
-composition:
-  modules_from_manifest: |
-${MODULES_YAML}
-  tools:
-    - ${BMAD_TOOLS}
-
-install_invocation:
-  cmd: npx --yes bmad-method@${BMAD_VERSION} install
-  flags:
-    - --directory <workdir>
-    - --modules ${BMAD_MODULES}
-    - --tools ${BMAD_TOOLS}
-    - --action install
-    - --user-name arcaven-ci
-    - --output-folder _bmad-output
-    - --yes
-
-artifact:
-  tarball: $(basename "${TARBALL}")
-  tarball_sha256: ${TARBALL_SHA}
-  tarball_bytes: ${TARBALL_SIZE}
-  file_count: ${FILE_COUNT}
-  layout:
-    - _config/       # bmad config + manifests
-    - core/          # built-in module
-    - bmm/           # built-in module
-    - cis/           # external module (npm + github)
-    - gds/           # external module
-    - tea/           # external module
-    - .claude/       # tool bindings (claude-code skills)
-
-signing:
-  status: $( [[ "${COSIGN}" == "1" ]] && echo 'signed' || echo 'unsigned-local-build' )
-YAML
-
-# 7b. Emit JSON copy of the predicate for cosign attest-blob. The yaml
-# is the human-readable canonical doc; the json is the same tree
-# without comments, suitable as an in-toto/cosign attestation predicate
-# (cosign rejects yaml + bare comments as "invalid character '#'").
-META_JSON="${OUT_DIR}/install.meta.json"
-yq -o json "${META}" > "${META_JSON}"
+HEADER
+    cat "${META}"
+} > "${META}.tmp" && mv "${META}.tmp" "${META}"
 
 echo "[build-bmad] emitted ${META}"
 echo "[build-bmad] emitted ${META_JSON}"
