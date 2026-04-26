@@ -116,4 +116,5 @@ jobs:
             artifacts/*.sig
             artifacts/*.bundle
             artifacts/install.meta.yaml
+            artifacts/install.meta.json
             artifacts/file-manifest.csv

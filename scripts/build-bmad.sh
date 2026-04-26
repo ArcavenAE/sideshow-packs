@@ -197,7 +197,15 @@ signing:
   status: $( [[ "${COSIGN}" == "1" ]] && echo 'signed' || echo 'unsigned-local-build' )
 YAML
 
+# 7b. Emit JSON copy of the predicate for cosign attest-blob. The yaml
+# is the human-readable canonical doc; the json is the same tree
+# without comments, suitable as an in-toto/cosign attestation predicate
+# (cosign rejects yaml + bare comments as "invalid character '#'").
+META_JSON="${OUT_DIR}/install.meta.json"
+yq -o json "${META}" > "${META_JSON}"
+
 echo "[build-bmad] emitted ${META}"
+echo "[build-bmad] emitted ${META_JSON}"
 echo "[build-bmad] emitted ${OUT_DIR}/file-manifest.csv (${FILE_COUNT} files)"
 echo "[build-bmad] tarball ${TARBALL} (${TARBALL_SIZE} bytes, sha256 ${TARBALL_SHA})"
 
@@ -217,10 +225,16 @@ if [[ "${COSIGN}" == "1" ]]; then
         --output-signature "${META}.sig" \
         "${META}"
 
-    echo "[build-bmad] cosign attest-blob (slsaprovenance predicate from install.meta.yaml)"
+    # cosign attest-blob requires the predicate to be JSON. Use our own
+    # predicate-type URI rather than --type slsaprovenance because the
+    # install.meta schema isn't slsa-shaped (it's our own provenance
+    # tree: upstream npm + git + composition + invocation). The
+    # actions/attest-build-provenance step (separate) emits the
+    # canonical SLSA provenance from GitHub's perspective.
+    echo "[build-bmad] cosign attest-blob (sideshow install-meta predicate)"
     cosign attest-blob --yes \
-        --predicate "${META}" \
-        --type slsaprovenance \
+        --predicate "${META_JSON}" \
+        --type "https://arcaven.com/sideshow/install-meta/v0.1.0" \
         --bundle "${TARBALL}.attest.bundle" \
         "${TARBALL}"
 else
