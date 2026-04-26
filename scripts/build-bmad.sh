@@ -217,8 +217,10 @@ jq -n \
     signing: { status: $signing_status }
   }' > "${META_JSON}"
 
-# Derive YAML from JSON for human consumption.
-yq -P "${META_JSON}" > "${META}"
+# Derive YAML from JSON for human consumption. Explicit -p/-o because
+# yq's format auto-detect from .json extension flips output to JSON
+# even with -P alone.
+yq -p json -o yaml "${META_JSON}" > "${META}"
 # Prepend the comment header that explains the artifact origin.
 {
     cat <<HEADER
