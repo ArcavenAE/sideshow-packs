@@ -7,11 +7,25 @@ VSDD, etc.) suitable for consumption by
 [sideshow](https://github.com/ArcavenAE/sideshow) without executing
 untrusted JavaScript on user machines.
 
-**Status:** MVP. bmad support shipped. vsdd-factory + dark-factory
+**Status:** MVP. **First release published: [`bmad-v6.3.0`](https://github.com/ArcavenAE/sideshow-packs/releases/tag/bmad-v6.3.0)**
+(2026-04-26, signed via cosign keyless OIDC). vsdd-factory + dark-factory
 pending (aae-orc-amet).
 
-**Visibility:** private. Some source materials cannot be redistributed.
-A stripped-down public mirror is planned for later.
+**Visibility:** public. The build script + workflow are not source
+materials we need to restrict. Release-asset tarballs contain upstream
+content under upstream licenses (bmad-method is MIT). When a future
+pack ships content that genuinely cannot be redistributed, that
+specific pack moves to a private mirror or alternate distribution
+channel; today's bmad arc has no such constraint. Visibility was
+flipped from private during u84w because GitHub's free plan blocks
+`actions/attest-build-provenance` on private repos.
+
+## Release URL format
+
+See [`docs/release-url-format.md`](docs/release-url-format.md) for the
+canonical contract: tag pattern, asset filenames, verification recipe,
+identity binding. Sideshow's client-side fetch + verify
+(`aae-orc-wk92`) consumes that contract.
 
 ## What this produces
 
