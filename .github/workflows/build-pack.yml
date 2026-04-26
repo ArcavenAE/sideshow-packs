@@ -93,7 +93,7 @@ jobs:
 
       - name: Attest provenance (GitHub native)
         if: inputs.sign
-        uses: actions/attest-build-provenance@5e9cb68e95676991667494a6a4e59b8a2f13e1d7  # v1.3.3
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4.1.0
         with:
           subject-path: 'artifacts/*-arcaven.tar.gz'
 
