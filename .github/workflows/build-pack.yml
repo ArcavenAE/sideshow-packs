@@ -60,7 +60,7 @@ jobs:
           yq --version
 
       - name: Install cosign
-        if: inputs.sign
+        if: inputs.sign || github.ref_type == 'tag'
         uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a  # v3.8.1
         with:
           cosign-release: 'v2.4.1'
@@ -84,7 +84,7 @@ jobs:
       - name: Build pack
         env:
           BMAD_VERSION: ${{ steps.params.outputs.version }}
-          COSIGN: ${{ inputs.sign && '1' || '0' }}
+          COSIGN: ${{ (inputs.sign || github.ref_type == 'tag') && '1' || '0' }}
         run: |
           case "${{ steps.params.outputs.pack }}" in
             bmad) bash scripts/build-bmad.sh ;;
@@ -92,7 +92,7 @@ jobs:
           esac
 
       - name: Attest provenance (GitHub native)
-        if: inputs.sign
+        if: inputs.sign || github.ref_type == 'tag'
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4.1.0
         with:
           subject-path: 'artifacts/*-arcaven.tar.gz'
