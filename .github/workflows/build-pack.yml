@@ -61,7 +61,7 @@ jobs:
 
       - name: Install cosign
         if: inputs.sign || github.ref_type == 'tag'
-        uses: sigstore/cosign-installer@d7d6bc7722e3daa8354c50bcb52f4837da5e9b6a  # v3.8.1
+        uses: step-security/cosign-installer@8c02650536457a1c912424ab6cb9734aa3eceb56 # v4.1.1
         with:
           cosign-release: 'v2.4.1'
 
@@ -106,7 +106,7 @@ jobs:
 
       - name: Create GitHub Release
         if: inputs.publish || github.ref_type == 'tag'
-        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191  # v2.0.8
+        uses: step-security/action-gh-release@dc29ef0d1f6f9a032a97ec797d9cb7ea788dde41 # v2.6.1
         with:
           name: ${{ steps.params.outputs.pack }} ${{ steps.params.outputs.version }}
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('{0}-v{1}', steps.params.outputs.pack, steps.params.outputs.version) }}
