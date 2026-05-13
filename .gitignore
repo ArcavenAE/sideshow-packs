@@ -3,3 +3,6 @@ work/
 .claude/settings.local.json
 .DS_Store
 node_modules/
+
+# Symlink to orc-level bd state — see aae-orc/CLAUDE.md
+.beads
