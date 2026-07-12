@@ -156,6 +156,24 @@ wrinkles:
     references:
       - upstream commit 74cf467d / PR #2388
 
+  - id: wds-unprefixed-skill-names
+    introduced_in: 6.7.0
+    resolved_in: null
+    severity: collision-risk
+    summary: >-
+      The wds module ships two skills with generic un-namespaced names
+      ('memory', 'sync') that land bare in the global skills dir.
+      Collision bait against any other pack or user skill claiming
+      those names; sync's last-writer-wins would silently shadow.
+    adaptation: >-
+      None yet — observed 2026-07-12 on the expanded-composition
+      re-issue. Candidate upstream issue (rename to wds-memory /
+      wds-sync); sideshow-side detection belongs to doctor (xteh) /
+      binding ownership (f13j). The sync-manifest ledger at least
+      records which pack wrote them.
+    references:
+      - expanded re-issue 2026-07-12 (bmb+wds composition)
+
   - id: uv-check-stdout-noise
     introduced_in: 6.9.0
     resolved_in: null
