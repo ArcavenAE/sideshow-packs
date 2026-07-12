@@ -134,6 +134,16 @@ anyway. Per-repo activation enforcement belongs to sideshow (consumer
 side, Binding abstraction aae-orc-f13j), not this repo's gate; the
 register is where the policy is declared so both sides read one source.
 
+## Slicing rule (added 2026-07-12)
+
+Packaging is VERTICAL (per source system — provenance, versioning,
+wrinkles are per-upstream facts; one register per upstream). Extraction
+and consumption are HORIZONTAL (by primitive type — roles-*,
+personas-*, workflows-docs-* per finding-019's pack types — so the
+library layer mixes across systems). Don't ship one-monolith-per-system
+extraction packs; don't try to make registers span systems. Full
+capture: aae-orc `_kos/ideas/cross-system-capability-mixing.md`.
+
 ## Onboarding order (proposal)
 
 1. **spectacle** — first-party, trivial, exercises minted-versioning
