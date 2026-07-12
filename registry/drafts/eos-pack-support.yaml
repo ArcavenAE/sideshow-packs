@@ -1,0 +1,71 @@
+# Pack-support register — eos (DRAFT, unvalidated)
+# First private-channel case: content cannot ship through this repo's
+# public releases. Schema v0.2.0 fields demonstrated; see
+# docs/pack-support-candidates.md.
+
+kind: pack-support
+schema_version: 0.2.0
+status: draft-unvalidated
+pack: eos
+
+upstream:
+  repo: https://github.com/ArcavenAE/eos   # PRIVATE
+  default_branch: main
+  note: >-
+    First-party tools repo: skills/, templates/, prompts/, reference/,
+    viewer/. Zero operating state by design — state lives in eos-dpg /
+    eos-dpg-<function> / eos-<surname> repos, which are NEVER pack
+    content. The pack, if minted, is the tools tier only.
+
+version_scheme: minted-by-packager   # no tags, no releases
+
+acquisition:
+  method: direct-tree
+  # candidate capture: skills/ templates/ prompts/ (reference/ and
+  # viewer/ inclusion to decide at onboarding)
+
+redistribution: private-channel-required
+# Org-sensitive content (DPG / 1898 context). The publish path in this
+# repo creates PUBLIC releases — it must refuse this pack. This is the
+# F24 "separate channel" escape hatch made concrete. Interim
+# distribution that works today: local build + sideshow install --from.
+
+activation:
+  default_scope: user
+  per_repo_required: false
+  rationale: >-
+    Tools are person-scoped (a person runs EOS tooling across their
+    machines); the eos-orc handles per-repo distribution within its own
+    fleet, outside sideshow scope for now.
+
+pipeline_assumptions:
+  - id: tools-only-invariant
+    desc: >-
+      captured tree contains zero operating state (no V/TO, scorecards,
+      rocks, L10 minutes, person data) — the repo's own design rule,
+      re-verified at every mint because a violation here is a data leak,
+      not a build break
+  - id: skills-shape
+    desc: skills/ entries are claude-code compatible skill dirs
+
+validated: []
+# minted-scheme: SHA-anchored brackets, as multiclaude.
+
+wrinkles:
+  - id: private-distribution-channel-unbuilt
+    introduced_in: null
+    resolved_in: null
+    severity: blocking-for-publish
+    summary: >-
+      No private distribution channel exists; this repo's pipeline
+      publishes public GitHub Releases. Smallest viable channel:
+      private mirror repo with same cosign flow (private repos block
+      actions/attest-build-provenance on the free plan — the exact
+      constraint that flipped THIS repo public, finding-037 — so
+      attestation strategy needs rethink for private packs).
+    adaptation: none yet; local --from install is the interim path.
+    references:
+      - aae-orc:charter F24 (frozen-composition visibility history)
+      - aae-orc:_kos/findings/finding-037
+
+llm_runbook: registry/pack-support-revalidation-runbook.md

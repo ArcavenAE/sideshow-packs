@@ -1,0 +1,77 @@
+# Pack-support register — multiclaude (DRAFT, unvalidated)
+# First minted-versioning case: upstream has NO tags and NO releases.
+# Schema v0.2.0 fields demonstrated; see docs/pack-support-candidates.md.
+
+kind: pack-support
+schema_version: 0.2.0
+status: draft-unvalidated
+pack: multiclaude
+
+upstream:
+  repo: https://github.com/ArcavenAE/multiclaude-enhancements
+  default_branch: main
+  note: >-
+    First-party gen-1 content, migrating to packs per
+    multiclaude-enhancements/docs/atelier-review-2026-07/composition-analysis.md.
+    Likely packaged per-slice (roles-multiclaude, protocols-multiclaude)
+    rather than one monolith — each slice gets its own register file
+    when that decision lands.
+
+version_scheme: minted-by-packager   # we mint 0.x/calendar versions at
+                                     # packaging time; upstream has none
+
+acquisition:
+  method: direct-tree
+  # candidate slices (content dirs observed 2026-07-12):
+  #   agents/ commands/ skills/ rules/ protocols/ injection/
+  #   memory-templates/ bmad-integration/ config/ scripts/
+
+redistribution: public-ok            # first-party; no upstream license issue
+
+activation:
+  default_scope: user
+  per_repo_required: false           # undecided — gen-1 agents may warrant
+                                     # per-repo like vsdd-factory; decide at
+                                     # onboarding
+
+pipeline_assumptions:
+  - id: tree-shape-stable
+    desc: the captured content dirs exist at the anchored SHA
+  - id: no-secrets-no-state
+    desc: captured slices carry no credentials or machine-local state
+
+validated: []
+# minted-scheme brackets anchor to SHAs, not version ranges:
+#   - ref: <git sha>
+#     minted_version: 0.1.0
+#     validated_at: ...
+#     evidence: [...]
+# check-support gate degrades to exact-ref match for this scheme —
+# "you validated THIS sha" is the honest semantics.
+
+wrinkles:
+  - id: no-upstream-versioning
+    introduced_in: null
+    resolved_in: null
+    severity: version-scheme
+    summary: >-
+      No tags or releases exist; any notion of version is minted by the
+      packager and meaningless to upstream. Two bundles minted from
+      different SHAs need the SHA to disambiguate, not the version.
+    adaptation: minted-by-packager scheme; SHA-anchored brackets.
+    references:
+      - git tag empty + no GH releases (2026-07-12 observation)
+
+  - id: content-in-migration
+    introduced_in: null
+    resolved_in: null
+    severity: acquisition-caution
+    summary: >-
+      Content is actively migrating to pack form per composition-analysis;
+      tree layout may shift under any bundle minted before migration
+      completes.
+    adaptation: anchor bundles to SHA; re-verify tree shape per mint.
+    references:
+      - multiclaude-enhancements/docs/atelier-review-2026-07/composition-analysis.md
+
+llm_runbook: registry/pack-support-revalidation-runbook.md

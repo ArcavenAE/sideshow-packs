@@ -1,0 +1,61 @@
+# Pack-support register — gastown roles (DRAFT, unvalidated)
+# First extraction-pack case: the pack is NOT the upstream's install
+# output — it is authored extraction of role definitions.
+# Schema v0.2.0 fields demonstrated; see docs/pack-support-candidates.md.
+
+kind: pack-support
+schema_version: 0.2.0
+status: draft-unvalidated
+pack: roles-gastown              # finding-019 naming: role-library pack
+
+upstream:
+  repo: https://github.com/gastownhall/gastown
+  default_branch: main
+  release_notes: https://github.com/gastownhall/gastown/releases
+  note: >-
+    Gas Town is a Go multi-agent workspace manager (goreleaser, semver
+    releases, v1.2.1 @ 2026-06-06). We do NOT package the software.
+    The pack is the seven infra role definitions — mayor, polecat,
+    crew, witness, deacon, refinery, dog (finding-019) — extracted as
+    a role library per the five-primitives taxonomy (orc B14).
+
+version_scheme: semver-releases  # brackets track which upstream versions
+                                 # the extraction_map has been verified against
+
+acquisition:
+  method: extraction
+  extraction_map: []             # TO AUTHOR at onboarding: upstream
+                                 # source/doc paths -> pack role-card
+                                 # artifacts. The map is itself
+                                 # version-sensitive content; expect a
+                                 # wrinkle entry every time upstream
+                                 # moves role docs.
+
+redistribution: public-ok        # verify upstream LICENSE at onboarding
+
+activation:
+  default_scope: user            # role cards are inert library content
+  per_repo_required: false
+
+pipeline_assumptions:
+  - id: role-set-stable
+    desc: the seven infra roles still exist upstream at the captured version
+  - id: extraction-paths-resolve
+    desc: every extraction_map source path exists at the captured tag
+
+validated: []
+
+wrinkles:
+  - id: pack-is-not-the-software
+    introduced_in: null
+    resolved_in: null
+    severity: consumer-expectation
+    summary: >-
+      Installing roles-gastown gives role definitions only. Consumers
+      wanting Gas Town runtime behavior install gastown itself from
+      upstream releases — out of this pack's scope.
+    adaptation: pack README states scope; sideshow install has nothing to enforce.
+    references:
+      - aae-orc:_kos/findings/finding-019-agent-taxonomy.md
+
+llm_runbook: registry/pack-support-revalidation-runbook.md
