@@ -244,8 +244,12 @@ if [[ "${REQUESTED_PINS_JSON}" != "{}" ]]; then
     echo "[build-bmad] verifying resolved module versions against requested pins"
     PIN_MISMATCH=0
     while IFS=$'\t' read -r code tag; do
+        # Normalize the v-prefix on BOTH sides: requested pins are git
+        # tags (v0.4.0) while the manifest records bare versions at
+        # 6.3.x ("0.2.0") but tag-verbatim at 6.4.0+ ("v0.2.0").
         want="${tag#v}"
         got="$(yq ".modules[] | select(.name == \"${code}\") | .version" "${BMAD_MANIFEST}")"
+        got="${got#v}"
         if [[ "${got}" != "${want}" ]]; then
             echo "[build-bmad] PIN DRIFT: ${code} requested ${tag}, manifest has ${got:-<absent>}"
             PIN_MISMATCH=1
