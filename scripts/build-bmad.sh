@@ -16,6 +16,15 @@
 #   BMAD_VERSION   (default: 6.3.0)
 #   BMAD_MODULES   (default: bmm,cis,gds,tea)
 #   BMAD_TOOLS     (default: claude-code)
+#   BMAD_PINS      (default: auto) — external-module pinning policy:
+#                    auto   = resolve each external module to its highest
+#                             pure-semver git tag published on or before
+#                             bmad-method@VERSION's npm publish date
+#                             (as-of-release-date composition; 6.4.0+ only —
+#                             6.3.x has no upstream pin mechanism)
+#                    none   = float to upstream default (stable channel /
+#                             default-branch HEAD on 6.3.x)
+#                    "cis=v0.2.0,gds=v0.6.0" = explicit pin list
 #   OUT_DIR        (default: ./artifacts)
 #   COSIGN         (default: 0)
 
@@ -24,11 +33,109 @@ set -euo pipefail
 BMAD_VERSION="${BMAD_VERSION:-6.3.0}"
 BMAD_MODULES="${BMAD_MODULES:-bmm,cis,gds,tea}"
 BMAD_TOOLS="${BMAD_TOOLS:-claude-code}"
+BMAD_PINS="${BMAD_PINS:-auto}"
 OUT_DIR="${OUT_DIR:-$(pwd)/artifacts}"
 COSIGN="${COSIGN:-0}"
 
 command -v npx >/dev/null || { echo "error: npx required"; exit 1; }
 command -v yq >/dev/null || { echo "error: yq required (https://github.com/mikefarah/yq)"; exit 1; }
+command -v jq >/dev/null || { echo "error: jq required"; exit 1; }
+command -v git >/dev/null || { echo "error: git required"; exit 1; }
+command -v python3 >/dev/null || { echo "error: python3 required"; exit 1; }
+
+# --- External-module pin resolution -----------------------------------
+#
+# External modules (cis/gds/tea) are git-cloned by the upstream installer:
+# at 6.3.x from default-branch HEAD (no pin mechanism exists), at 6.4.0+
+# from the highest stable git tag unless --pin CODE=TAG is passed. To make
+# compositions date-deterministic we resolve, per module, the highest
+# pure-semver tag published on or before bmad-method@VERSION's npm publish
+# date. Upstream silently ignores malformed pins, so resolved versions are
+# verified against the produced manifest after install (fatal on drift).
+# See finding-070.
+
+module_repo() {
+    case "$1" in
+        cis) echo "https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite" ;;
+        gds) echo "https://github.com/bmad-code-org/bmad-module-game-dev-studio" ;;
+        tea) echo "https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise" ;;
+        *)   echo "" ;;
+    esac
+}
+
+iso_to_epoch() {
+    python3 -c "import sys,datetime; print(int(datetime.datetime.fromisoformat(sys.argv[1].replace('Z','+00:00')).timestamp()))" "$1"
+}
+
+# Highest pure-semver tag with tag date <= as-of epoch. Bare partial clone,
+# no blobs — a few KB per module repo.
+resolve_tag_asof() { # repo_url asof_epoch
+    local url="$1" asof="$2" tmp tag
+    tmp="$(mktemp -d -t bmad-pin-XXXXXX)"
+    git clone --quiet --bare --filter=blob:none "$url" "$tmp/repo.git"
+    tag="$(git -C "$tmp/repo.git" for-each-ref \
+            --format='%(creatordate:unix) %(refname:short)' refs/tags \
+        | awk -v asof="$asof" '$1 <= asof {print $2}' \
+        | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
+        | sort -V | tail -1 || true)"
+    rm -rf "$tmp"
+    echo "$tag"
+}
+
+version_ge_640() {
+    [[ "$(printf '%s\n' "6.4.0" "$1" | sort -V | head -1)" == "6.4.0" ]]
+}
+
+PIN_FLAGS=()
+REQUESTED_PINS_JSON="{}"
+PIN_POLICY="none"
+AS_OF_DATE=""
+
+if [[ "${BMAD_PINS}" == "none" ]]; then
+    PIN_POLICY="unpinned-floating"
+elif ! version_ge_640 "${BMAD_VERSION}"; then
+    PIN_POLICY="unpinned-no-mechanism-at-this-version"
+    if [[ "${BMAD_PINS}" != "auto" ]]; then
+        echo "[build-bmad] FATAL: BMAD_PINS set but bmad ${BMAD_VERSION} has no pin mechanism (--pin exists at 6.4.0+)"
+        exit 1
+    fi
+    echo "[build-bmad] pins: ${PIN_POLICY} (composition is build-time-recorded only)"
+elif [[ "${BMAD_PINS}" == "auto" ]]; then
+    PIN_POLICY="as-of-release-date"
+    AS_OF_DATE="$(npm view bmad-method time --json | jq -r --arg v "${BMAD_VERSION}" '.[$v] // empty')"
+    if [[ -z "${AS_OF_DATE}" ]]; then
+        echo "[build-bmad] FATAL: no npm publish date for bmad-method@${BMAD_VERSION}"
+        exit 1
+    fi
+    AS_OF_EPOCH="$(iso_to_epoch "${AS_OF_DATE}")"
+    echo "[build-bmad] pins: resolving as-of ${AS_OF_DATE}"
+    IFS=',' read -ra MODULE_LIST <<< "${BMAD_MODULES}"
+    for code in "${MODULE_LIST[@]}"; do
+        repo="$(module_repo "$code")"
+        [[ -z "$repo" ]] && continue  # built-in (core/bmm) or unknown: version-locked by bmad-method@VERSION
+        tag="$(resolve_tag_asof "$repo" "$AS_OF_EPOCH")"
+        if [[ -z "$tag" ]]; then
+            echo "[build-bmad] FATAL: no semver tag for ${code} (${repo}) at or before ${AS_OF_DATE}"
+            exit 1
+        fi
+        echo "[build-bmad] pin ${code}=${tag}"
+        PIN_FLAGS+=(--pin "${code}=${tag}")
+        REQUESTED_PINS_JSON="$(jq -c --arg k "$code" --arg v "$tag" '. + {($k): $v}' <<< "$REQUESTED_PINS_JSON")"
+    done
+else
+    PIN_POLICY="explicit"
+    IFS=',' read -ra PIN_LIST <<< "${BMAD_PINS}"
+    for kv in "${PIN_LIST[@]}"; do
+        code="${kv%%=*}"; tag="${kv#*=}"
+        if [[ -z "$code" || -z "$tag" || "$code" == "$tag" ]]; then
+            echo "[build-bmad] FATAL: malformed BMAD_PINS entry: ${kv}"
+            exit 1
+        fi
+        echo "[build-bmad] pin ${code}=${tag} (explicit)"
+        PIN_FLAGS+=(--pin "${code}=${tag}")
+        REQUESTED_PINS_JSON="$(jq -c --arg k "$code" --arg v "$tag" '. + {($k): $v}' <<< "$REQUESTED_PINS_JSON")"
+    done
+fi
 
 WORK="$(mktemp -d -t bmad-pack-XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
@@ -42,7 +149,7 @@ mkdir -p "${OUT_DIR}"
 INSTALL_ROOT="${WORK}/install"
 mkdir -p "${INSTALL_ROOT}"
 cd "${INSTALL_ROOT}"
-echo "[build-bmad] invoking npx bmad-method@${BMAD_VERSION} install"
+echo "[build-bmad] invoking npx bmad-method@${BMAD_VERSION} install (${#PIN_FLAGS[@]} pin flags)"
 npx --yes "bmad-method@${BMAD_VERSION}" install \
     --directory "${INSTALL_ROOT}" \
     --modules "${BMAD_MODULES}" \
@@ -50,6 +157,7 @@ npx --yes "bmad-method@${BMAD_VERSION}" install \
     --action install \
     --user-name arcaven-ci \
     --output-folder _bmad-output \
+    ${PIN_FLAGS[@]+"${PIN_FLAGS[@]}"} \
     --yes \
     >"${WORK}/installer.stdout" 2>"${WORK}/installer.stderr"
 
@@ -129,7 +237,26 @@ if [[ ! -f "${BMAD_MANIFEST}" ]]; then
     exit 1
 fi
 
-command -v jq >/dev/null || { echo "error: jq required"; exit 1; }
+# 5b. Verify requested pins took effect. Upstream warns-and-ignores
+# malformed pins rather than failing, so the pipeline must be the one
+# to fail on composition drift (finding-070).
+if [[ "${REQUESTED_PINS_JSON}" != "{}" ]]; then
+    echo "[build-bmad] verifying resolved module versions against requested pins"
+    PIN_MISMATCH=0
+    while IFS=$'\t' read -r code tag; do
+        want="${tag#v}"
+        got="$(yq ".modules[] | select(.name == \"${code}\") | .version" "${BMAD_MANIFEST}")"
+        if [[ "${got}" != "${want}" ]]; then
+            echo "[build-bmad] PIN DRIFT: ${code} requested ${tag}, manifest has ${got:-<absent>}"
+            PIN_MISMATCH=1
+        fi
+    done < <(jq -r 'to_entries[] | [.key, .value] | @tsv' <<< "${REQUESTED_PINS_JSON}")
+    if [[ "${PIN_MISMATCH}" == "1" ]]; then
+        echo "[build-bmad] FATAL: composition does not match requested pins"
+        exit 1
+    fi
+    echo "[build-bmad] pins verified"
+fi
 
 # 6. Build the tarball (tar from pack stage, gzip).
 TARBALL="${OUT_DIR}/bmad-${BMAD_VERSION}-arcaven.tar.gz"
@@ -172,6 +299,9 @@ jq -n \
   --argjson modules "${MODULES_JSON:-null}" \
   --arg modules_csv "${BMAD_MODULES}" \
   --arg tools "${BMAD_TOOLS}" \
+  --arg pin_policy "${PIN_POLICY}" \
+  --arg as_of_date "${AS_OF_DATE}" \
+  --argjson requested_pins "${REQUESTED_PINS_JSON}" \
   --arg tarball "$(basename "${TARBALL}")" \
   --arg tarball_sha256 "${TARBALL_SHA}" \
   --argjson tarball_bytes "${TARBALL_SIZE}" \
@@ -194,7 +324,10 @@ jq -n \
     },
     composition: {
       modules_from_manifest: $modules,
-      tools: [$tools]
+      tools: [$tools],
+      pin_policy: $pin_policy,
+      as_of_date: (if $as_of_date == "" then null else $as_of_date end),
+      requested_pins: $requested_pins
     },
     install_invocation: {
       cmd: ("npx --yes bmad-method@" + $version + " install"),
