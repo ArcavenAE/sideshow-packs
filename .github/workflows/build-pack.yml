@@ -17,6 +17,10 @@ on:
         description: "External-module pins: auto (as-of-release-date), none, or cis=v0.2.0,gds=v0.4.0,..."
         type: string
         default: "auto"
+      allow_unsupported:
+        description: Build a version outside the validated support bracket (best-effort; see registry/pack-support-revalidation-runbook.md)
+        type: boolean
+        default: false
       sign:
         description: Sign + attest with cosign (OIDC keyless)
         type: boolean
@@ -89,6 +93,7 @@ jobs:
         env:
           BMAD_VERSION: ${{ steps.params.outputs.version }}
           BMAD_PINS: ${{ inputs.pins || 'auto' }}
+          ALLOW_UNSUPPORTED: ${{ inputs.allow_unsupported && '1' || '0' }}
           COSIGN: ${{ (inputs.sign || github.ref_type == 'tag') && '1' || '0' }}
         run: |
           case "${{ steps.params.outputs.pack }}" in

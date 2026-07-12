@@ -1,0 +1,173 @@
+# Pack-support register — bmad
+#
+# Naming pattern: <pack>-pack-support.yaml, one file per pack. The
+# filename + `kind` field keep the file self-describing when copied or
+# referenced outside this repo (a pack repo may carry its own — e.g.
+# vsdd-factory-pack-support.yaml, multiclaude-pack-support.yaml as
+# those content packs come under sideshow management, aae-orc-amet).
+# Only `upstream` and the assumption/wrinkle content differ per pack;
+# the schema is upstream-agnostic.
+#
+# Machine-consulted by scripts/check-support.sh before any build, and
+# LLM-parsable by design: an agent asked to package an unsupported
+# version should read this file, then follow llm_runbook.
+#
+# This register tracks UPSTREAM VERSION WRINKLES affecting our ability
+# to package — not defects in published artifacts (that is the
+# known-defects registry, aae-orc-ztg5, planned as sibling
+# <pack>-known-defects.yaml files in this directory).
+#
+# Version brackets: [introduced_in, resolved_in). null introduced_in =
+# since the beginning; null resolved_in = still current.
+
+kind: pack-support
+schema_version: 0.1.0
+pack: bmad
+
+upstream:
+  repo: https://github.com/bmad-code-org/BMAD-METHOD
+  npm_package: bmad-method
+  release_notes: https://github.com/bmad-code-org/BMAD-METHOD/releases
+  installer_entry: tools/installer/bmad-cli.js
+  external_modules:
+    # git-cloned by the installer at build time (NOT npm-installed;
+    # npmPackage in upstream metadata is metadata only)
+    cis: https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite
+    gds: https://github.com/bmad-code-org/bmad-module-game-dev-studio
+    tea: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
+
+# What "supported" means: every validated bracket was verified against
+# ALL of these assumptions. A new version is unsupported until an
+# agent/human re-verifies them (see llm_runbook) and extends a bracket.
+pipeline_assumptions:
+  - id: argv-contract
+    desc: >-
+      installer accepts --directory --modules --tools --action
+      --user-name --output-folder --yes non-interactively
+      (+ --pin CODE=TAG at >=6.4.0); --tools REQUIRED under --yes
+      since 6.6.0
+  - id: bmad-output-dir
+    desc: installer produces _bmad/ under the install directory
+  - id: manifest-shape
+    desc: _bmad/_config/manifest.yaml exists with a .modules list
+  - id: module-set
+    desc: modules bmm,cis,gds,tea valid; cis/gds/tea external (git-cloned)
+  - id: claude-sibling
+    desc: .claude/ emitted as sibling for claude-code tool bindings
+  - id: node-engine
+    desc: runner Node satisfies upstream engines floor (>=20.12.0 at >=6.7.0)
+
+validated:
+  - min: 6.3.0
+    max: 6.10.0   # inclusive
+    validated_at: "2026-07-12"
+    method: >-
+      per-transition installer source diff across all 9 stable tags +
+      9-rung build ladder (sign=false publish=false), pin composition
+      verified per rung
+    evidence:
+      - aae-orc:_kos/findings/finding-070-bmad-upstream-prescan-and-module-pinning.md
+      - aae-orc:_kos/findings/finding-071-bmad-packaging-ladder-results.md
+      - aae-orc:_kos/findings/finding-035-bmad-65-sideshow-readiness.md
+      - aae-orc:_kos/findings/finding-025-bmad-6.3.0-sideshow-install-probe.md
+
+wrinkles:
+  - id: no-pin-mechanism
+    introduced_in: null
+    resolved_in: 6.4.0
+    severity: blocking-for-reproducibility
+    summary: >-
+      No mechanism of any kind (flag/env/config/lockfile) to pin
+      external module versions; installer clones default-branch HEAD.
+      Compositions at these versions are build-time-recorded only and
+      permanently unreproducible in-contract.
+    adaptation: >-
+      BMAD_PINS=auto refuses non-auto pin requests below 6.4.0 and
+      records pin_policy=unpinned-no-mechanism-at-this-version in
+      install.meta.json. Frozen-composition baseline moved to >=6.4.0.
+    references:
+      - aae-orc:_kos/findings/finding-070 (resolution model)
+      - upstream tools/installer external-manager.js @ v6.3.0 (git clone --depth 1, no ref)
+
+  - id: pin-flag-available
+    introduced_in: 6.4.0
+    resolved_in: null
+    severity: capability
+    summary: >-
+      --pin CODE=TAG (repeatable) pins external modules to exact git
+      tags; channel-resolver resolves default 'stable' = highest
+      pure-semver tag. CAUTION: malformed pins WARN AND ARE IGNORED
+      upstream — the pipeline must verify resolved versions itself.
+    adaptation: >-
+      build-bmad.sh BMAD_PINS (auto = as-of-release-date resolution
+      against module repo git tags; explicit CSV supported) + fatal
+      post-install verification against manifest.
+    references:
+      - upstream channel-resolver.js / channel-plan.js @ >=6.4.0
+      - sideshow-packs 1bf95fe (pinning) + 18a1cce (verification fix)
+
+  - id: manifest-version-v-prefix
+    introduced_in: 6.4.0
+    resolved_in: null
+    severity: adaptation-shipped
+    summary: >-
+      manifest.yaml module versions switch from bare ("0.2.0") at
+      6.3.x to tag-verbatim ("v0.2.0") at >=6.4.0. Any consumer
+      comparing versions must normalize the v-prefix on both sides.
+    adaptation: build-bmad.sh pin verification normalizes both sides (18a1cce).
+    references:
+      - run 29201456602 (false-positive PIN DRIFT before the fix)
+
+  - id: upstream-custom-dir
+    introduced_in: 6.4.0
+    resolved_in: null
+    severity: consumer-convention
+    summary: >-
+      _bmad/custom/ TOML customization + bmad-customize skill. Collides
+      with sideshow's per-repo _<pack>-custom/ convention unless bridged.
+    adaptation: >-
+      pack.yaml distribute.custom_bridge (emitted for all bmad bundles;
+      inert pre-6.4) + sideshow custom-bridge implementation (PR #47).
+    references:
+      - sideshow:docs/customization-bridge.md
+      - aae-orc:_kos/findings/finding-035 (collision first observed)
+
+  - id: tools-flag-required
+    introduced_in: 6.6.0
+    resolved_in: null
+    severity: adaptation-not-needed
+    summary: >-
+      BREAKING upstream #2346: --tools none removed; --tools REQUIRED
+      for --yes fresh installs. Pipelines omitting --tools break here.
+    adaptation: pipeline always passed --tools claude-code; no change needed.
+    references:
+      - upstream PR #2346
+
+  - id: node-engine-floor-20-12
+    introduced_in: 6.7.0
+    resolved_in: null
+    severity: environment-gate
+    summary: >-
+      engines floor rises >=20.0.0 -> >=20.12.0 with the module-resolution
+      rewrite (commit 74cf467d, marketplace registry retired,
+      bmad-modules.yaml becomes sole module source). Most likely silent
+      break for stale runners.
+    adaptation: CI setup-node '20' resolves latest 20.x (compliant). Verify on runner changes.
+    references:
+      - upstream commit 74cf467d / PR #2388
+
+  - id: uv-check-stdout-noise
+    introduced_in: 6.9.0
+    resolved_in: null
+    severity: cosmetic
+    summary: >-
+      uv-check.js emits warn-only 'uv' tooling advice on stdout during
+      install (never blocks, even under --yes). Do not treat as failure.
+    adaptation: none needed; noted so log-watchers don't false-alarm.
+    references:
+      - upstream commit 02739932 / PR #2495
+
+# For versions OUTSIDE every validated bracket: check-support.sh points
+# here. An LLM (or human) follows this runbook to re-validate, then
+# extends the bracket above with new evidence.
+llm_runbook: registry/pack-support-revalidation-runbook.md

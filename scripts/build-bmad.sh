@@ -43,6 +43,11 @@ command -v jq >/dev/null || { echo "error: jq required"; exit 1; }
 command -v git >/dev/null || { echo "error: git required"; exit 1; }
 command -v python3 >/dev/null || { echo "error: python3 required"; exit 1; }
 
+# Packaging-support pre-flight: refuses versions outside the validated
+# bracket in registry/bmad-pack-support.yaml unless ALLOW_UNSUPPORTED=1. See
+# registry/pack-support-revalidation-runbook.md for the supported path forward.
+bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/check-support.sh" bmad "${BMAD_VERSION}"
+
 # --- External-module pin resolution -----------------------------------
 #
 # External modules (cis/gds/tea) are git-cloned by the upstream installer:

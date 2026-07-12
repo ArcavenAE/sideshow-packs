@@ -27,6 +27,21 @@ canonical contract: tag pattern, asset filenames, verification recipe,
 identity binding. Sideshow's client-side fetch + verify
 (`aae-orc-wk92`) consumes that contract.
 
+## Packaging-support register
+
+`registry/<pack>-pack-support.yaml` records, per pack: the validated version
+brackets (with evidence), the pipeline assumptions that define
+"supported," and the known upstream wrinkles (version-bracketed, with
+the adaptation each one required). `scripts/check-support.sh` gates
+every build on it: versions outside all validated brackets refuse to
+build unless `ALLOW_UNSUPPORTED=1` (workflow input
+`allow_unsupported`), and the refusal message points at
+[`registry/pack-support-revalidation-runbook.md`](registry/pack-support-revalidation-runbook.md)
+— executable instructions for an LLM or human to re-validate a new
+version and extend the bracket with evidence. The register tracks
+upstream packaging wrinkles; published-artifact defects are the
+separate known-defects registry (`aae-orc-ztg5`).
+
 ## What this produces
 
 For each pack version, the pipeline emits:
