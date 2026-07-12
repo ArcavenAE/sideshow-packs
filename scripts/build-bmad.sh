@@ -81,6 +81,15 @@ version: ${BMAD_VERSION}
 schema_version: 0.1.0
 
 distribute:
+  # Customization bridge (bmad 6.4+ reads _bmad/custom/ at runtime).
+  # sideshow symlinks _bmad/custom -> ../_bmad-custom so customization
+  # lands in checked-in territory and survives pack version switches.
+  # Declared for all bmad versions: pre-6.4 upstream never reads the
+  # path, so the bridge is inert there. See
+  # sideshow/docs/customization-bridge.md (aae-orc-mkpo).
+  custom_bridge:
+    upstream_path: _bmad/custom
+    per_repo_dir: _bmad-custom
   gitignore:
     # Pack content — sideshow installs to user-scope; project-local copies
     # are redundant and conflict with multi-user sideshow installs.
