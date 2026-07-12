@@ -166,13 +166,14 @@ wrinkles:
       Collision bait against any other pack or user skill claiming
       those names; sync's last-writer-wins would silently shadow.
     adaptation: >-
-      None yet — observed 2026-07-12 on the expanded-composition
-      re-issue. Candidate upstream issue (rename to wds-memory /
-      wds-sync); sideshow-side detection belongs to doctor (xteh) /
-      binding ownership (f13j). The sync-manifest ledger at least
-      records which pack wrote them.
+      Upstream issue filed: bmad-code-org/bmad-method-wds-expansion#38
+      (rename to wds-memory / wds-sync). Inline patching deliberately
+      deferred — content renames are overlay territory (10vq).
+      Sideshow-side sync-time collision detection ticketed
+      (cross-pack owner check against the sync-manifest ledger).
     references:
       - expanded re-issue 2026-07-12 (bmb+wds composition)
+      - https://github.com/bmad-code-org/bmad-method-wds-expansion/issues/38
 
   - id: uv-check-stdout-noise
     introduced_in: 6.9.0
