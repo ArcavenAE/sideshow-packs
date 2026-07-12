@@ -13,6 +13,10 @@ on:
         type: string
         required: true
         default: "6.3.0"
+      modules:
+        description: "Module composition (comma-separated codes; core is always included)"
+        type: string
+        default: "bmm,cis,gds,tea"
       pins:
         description: "External-module pins: auto (as-of-release-date), none, or cis=v0.2.0,gds=v0.4.0,..."
         type: string
@@ -92,6 +96,7 @@ jobs:
       - name: Build pack
         env:
           BMAD_VERSION: ${{ steps.params.outputs.version }}
+          BMAD_MODULES: ${{ inputs.modules || 'bmm,cis,gds,tea' }}
           BMAD_PINS: ${{ inputs.pins || 'auto' }}
           ALLOW_UNSUPPORTED: ${{ inputs.allow_unsupported && '1' || '0' }}
           COSIGN: ${{ (inputs.sign || github.ref_type == 'tag') && '1' || '0' }}

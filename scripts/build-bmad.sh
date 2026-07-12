@@ -64,6 +64,8 @@ module_repo() {
         cis) echo "https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite" ;;
         gds) echo "https://github.com/bmad-code-org/bmad-module-game-dev-studio" ;;
         tea) echo "https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise" ;;
+        bmb) echo "https://github.com/bmad-code-org/bmad-builder" ;;
+        wds) echo "https://github.com/bmad-code-org/bmad-method-wds-expansion" ;;
         *)   echo "" ;;
     esac
 }
@@ -208,11 +210,15 @@ distribute:
     # are redundant and conflict with multi-user sideshow installs.
     - /_bmad/
     # Tool binding duplicates — sideshow syncs ~/.claude/ at user-scope.
+    # Prefixes cover the full module roster; entries for modules not in
+    # this composition are harmless.
     - /.claude/commands/bmad-*.md
     - /.claude/skills/bmad-*/
     - /.claude/skills/gds-*/
     - /.claude/skills/cis-*/
     - /.claude/skills/tea-*/
+    - /.claude/skills/bmb-*/
+    - /.claude/skills/wds-*/
 YAML
 
 # 4. Emit file-manifest.csv (sha256,size,relpath).
@@ -355,15 +361,9 @@ jq -n \
       tarball_sha256: $tarball_sha256,
       tarball_bytes: $tarball_bytes,
       file_count: $file_count,
-      layout: [
-        "_config/",
-        "core/",
-        "bmm/",
-        "cis/",
-        "gds/",
-        "tea/",
-        ".claude/"
-      ]
+      layout: (["_config/", "core/"]
+        + ($modules_csv | split(",") | map(. + "/"))
+        + [".claude/"])
     },
     signing: { status: $signing_status }
   }' > "${META_JSON}"
