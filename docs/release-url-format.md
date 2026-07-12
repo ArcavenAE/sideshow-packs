@@ -149,3 +149,14 @@ at the top. Today's schema is `0.1.0`. Future bumps follow
 
 [1]: ../.github/workflows/build-pack.yml
 [2]: https://github.com/ArcavenAE/sideshow-packs/commit/e666f4f
+
+## Publishing gotchas
+
+- **Never push more than 3 tags in one `git push`.** GitHub suppresses
+  push events beyond three tags per push — workflows silently do not
+  fire (hit 2026-07-12: 8 `bmad-v*` tags pushed together triggered
+  zero builds). Recovery: `workflow_dispatch` with `publish=true` per
+  version — the release step attaches to the already-pushed tag.
+- Releases are created as **drafts** by design (both tag-trigger and
+  dispatch); publishing the draft is a deliberate second step
+  (`gh api -X PATCH .../releases/<id> -f draft=false`).
