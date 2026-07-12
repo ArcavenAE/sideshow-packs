@@ -1,0 +1,103 @@
+# Pack-support register — bmad-personas-arcaven (DRAFT, unvalidated)
+# First ADDON-pack case: content FOR another pack (bmad), consumed via
+# the customization bridge. Demonstrates depends_on (v0.2.0 proposal).
+# See docs/pack-support-candidates.md.
+
+kind: pack-support
+schema_version: 0.2.0
+status: draft-unvalidated
+pack: bmad-personas-arcaven
+
+upstream:
+  note: >-
+    Multi-source first-party extraction: custom bmad persona cards
+    authored in Arcaven project repos. Source repos remain canonical —
+    consolidation is by extraction at build time, never by moving
+    files. 1898andCo-authored personas (peu, axiathon) are EXCLUDED:
+    employer IP boundary (they stay in-repo, where the custom bridge
+    already serves them; a 1898-internal channel is a separate future
+    decision).
+  sources:
+    - repo: https://github.com/ArcavenAE/ftc          # private
+      path: _bmad-custom/agents
+    - repo: https://github.com/ArcavenAE/switchboard
+      path: _bmad-custom/agents
+
+version_scheme: minted-by-packager   # sources are unversioned repo dirs;
+                                     # SHA-anchored per source at mint
+
+depends_on:
+  bmad: ">=6.4.0"    # PROVISIONAL floor — cards are pre-6.4 markdown;
+                     # whether 6.4+/6.10 loads .md agents from
+                     # _bmad/custom/agents/ is empirically OPEN. Test in
+                     # the 6.10.0 install chain (one card through the
+                     # bridge, run party-mode). If .md does not load,
+                     # this pack needs an md->TOML conversion step
+                     # (weaving-engine family, aae-orc-a44c) and the
+                     # floor statement moves into a wrinkle.
+
+acquisition:
+  method: extraction
+  extraction_map:
+    - from: ftc:_bmad-custom/agents/*.md
+      to: agents/
+    - from: switchboard:_bmad-custom/agents/*.md
+      to: agents/
+  # Portable persona CARDS only (B14 library items). Project-bound
+  # context is NEVER extracted: *-agent-memories.yaml, memories/,
+  # templates/, data/ stay in their repos — they are state, not library.
+
+redistribution: public-ok            # first-party Arcaven content
+                                     # (ftc repo private; publishing its
+                                     # persona cards is an explicit
+                                     # decision to make at first mint)
+
+activation:
+  default_scope: per-repo
+  per_repo_required: false
+  rationale: >-
+    Consumption is per-repo by nature: cards land in a consumer repo's
+    _bmad-custom/agents/ (through sideshow distribute), reaching bmad
+    via the customization bridge. There is no user-scope activation
+    surface for custom agents today.
+
+pipeline_assumptions:
+  - id: card-format-loads
+    desc: bmad at the depends_on floor loads markdown agent cards from _bmad/custom/agents/
+  - id: sources-present
+    desc: every extraction_map source path exists at the pinned SHA
+
+validated: []
+
+wrinkles:
+  - id: duplicate-cards-across-sources
+    introduced_in: null
+    resolved_in: null
+    severity: extraction-gate
+    summary: >-
+      The same card exists in multiple source repos and can drift
+      (observed 2026-07-12: sam-platform-engineer.md in both ftc and
+      axiathon; axiathon excluded by org boundary but the pattern
+      recurs within Arcaven sources too as cards get copied).
+    adaptation: >-
+      extraction FAILS on byte-divergent duplicates, naming the
+      divergence — consolidation pressure surfaces when real. Identical
+      duplicates dedupe silently.
+    references:
+      - inventory 2026-07-12 (session; ftc + axiathon both carry sam-platform-engineer.md)
+
+  - id: pre-64-card-format
+    introduced_in: null
+    resolved_in: null
+    severity: compatibility-unknown
+    summary: >-
+      Cards predate bmad 6.4's TOML four-file customization
+      architecture. Load behavior of .md cards under 6.4+/6.10 is
+      untested; the depends_on floor is provisional until the 6.10.0
+      install-chain test runs.
+    adaptation: none yet — empirical test queued (orc session 2026-07-12).
+    references:
+      - aae-orc:_kos/findings/finding-035 (6.4 customization architecture)
+      - sideshow:docs/customization-bridge.md
+
+llm_runbook: registry/pack-support-revalidation-runbook.md
