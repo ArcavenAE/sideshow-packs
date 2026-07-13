@@ -175,6 +175,25 @@ wrinkles:
       - expanded re-issue 2026-07-12 (bmb+wds composition)
       - https://github.com/bmad-code-org/bmad-method-wds-expansion/issues/38
 
+  - id: runtime-skills-write-project-files
+    introduced_in: 6.7.0
+    resolved_in: null
+    severity: store-integrity
+    summary: >-
+      Activation-time helper skills (wds sync "called automatically on
+      every agent activation"; bmb setup) perform project file
+      operations that assume a writable {project-root}/_bmad. Under a
+      shared-store install model with read-substitution fallback, those
+      writes land in the store: observed 2026-07-12 — _config/, core/,
+      bmb/ deleted from the active store version during a party-mode
+      run (aae-orc finding-074).
+    adaptation: >-
+      Store frozen read-only (interim chmod; feature aae-orc-dihj);
+      fallback footer to read-only semantics (aae-orc-6hon); runtime
+      shim provides legitimate project-root surfaces (aae-orc-rpnd).
+    references:
+      - aae-orc:_kos/findings/finding-074-party-mode-store-corruption-write-through-fallback.md
+
   - id: uv-check-stdout-noise
     introduced_in: 6.9.0
     resolved_in: null
