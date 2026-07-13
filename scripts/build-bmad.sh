@@ -232,6 +232,9 @@ distribute:
     - /.claude/skills/tea-*/
     - /.claude/skills/bmb-*/
     - /.claude/skills/wds-*/
+    # Personal config layer (upstream four-file intent: config.user.toml
+    # is per-person, config.toml is team-committed).
+    - /_bmad-custom/config.user.toml
 YAML
 
 # 4. Emit file-manifest.csv (sha256,size,relpath).
