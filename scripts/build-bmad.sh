@@ -205,6 +205,19 @@ distribute:
   custom_bridge:
     upstream_path: _bmad/custom
     per_repo_dir: _bmad-custom
+  # Runtime read surfaces upstream resolvers expect at {project-root}/_bmad/
+  # (resolve_config's four-file chain + scripts). Enumerated deliberately;
+  # the reference scanner (sideshow-packs#2) proposes additions per
+  # version. See sideshow#52 / aae-orc finding-074.
+  runtime_links:
+    - link: scripts
+      target: scripts
+    - link: _config
+      target: _config
+    - link: config.toml
+      target: config.toml
+    - link: config.user.toml
+      target: config.user.toml
   gitignore:
     # Pack content — sideshow installs to user-scope; project-local copies
     # are redundant and conflict with multi-user sideshow installs.
