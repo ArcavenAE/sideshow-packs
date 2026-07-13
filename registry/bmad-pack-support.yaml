@@ -188,9 +188,11 @@ wrinkles:
       bmb/ deleted from the active store version during a party-mode
       run (aae-orc finding-074).
     adaptation: >-
-      Store frozen read-only (interim chmod; feature aae-orc-dihj);
-      fallback footer to read-only semantics (aae-orc-6hon); runtime
-      shim provides legitimate project-root surfaces (aae-orc-rpnd).
+      SHIPPED (sideshow PR #55, 2026-07-12): runtime_links shim makes
+      project-root read surfaces real (roster resolves, 21 members);
+      fallback footer now READ-ONLY; store frozen (interim chmod;
+      install-freeze feature aae-orc-dihj remains). Resolution model:
+      sideshow docs/path-resolution.md.
     references:
       - aae-orc:_kos/findings/finding-074-party-mode-store-corruption-write-through-fallback.md
 
