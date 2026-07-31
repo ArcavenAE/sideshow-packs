@@ -56,15 +56,15 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0  # v2.12.2
+        uses: step-security/harden-runner@bf7454d06d71f1098171f2acdf0cd4708d7b5920  # v2.20.0
         with:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Setup Node (for npx bmad-method)
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: '20'
 
@@ -77,7 +77,7 @@ jobs:
 
       - name: Install cosign
         if: inputs.sign || github.ref_type == 'tag'
-        uses: step-security/cosign-installer@8c02650536457a1c912424ab6cb9734aa3eceb56 # v4.1.1
+        uses: step-security/cosign-installer@7d5ca7d0ecba292387fa6f81cde2c05e53a2a6d7 # v4.1.2
         with:
           cosign-release: 'v2.4.1'
 
@@ -113,12 +113,12 @@ jobs:
 
       - name: Attest provenance (GitHub native)
         if: inputs.sign || github.ref_type == 'tag'
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4.1.0
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4.1.1
         with:
           subject-path: 'artifacts/*-arcaven.tar.gz'
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: ${{ steps.params.outputs.pack }}-${{ steps.params.outputs.version }}
           path: artifacts/
@@ -126,7 +126,7 @@ jobs:
 
       - name: Create GitHub Release
         if: inputs.publish || github.ref_type == 'tag'
-        uses: step-security/action-gh-release@dc29ef0d1f6f9a032a97ec797d9cb7ea788dde41 # v2.6.1
+        uses: step-security/action-gh-release@d2093dbdaf0c6507874908247e14bbc4dee6a72d # v3.0.1
         with:
           name: ${{ steps.params.outputs.pack }} ${{ steps.params.outputs.version }}
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('{0}-v{1}', steps.params.outputs.pack, steps.params.outputs.version) }}
