@@ -1,0 +1,60 @@
+name: Upstream intake
+
+# Scheduled detection of new upstream pack releases, with a soak window
+# and a tag-SHA stability check before any build is dispatched.
+# bd: aae-orc-4t1k. Logic lives in scripts/upstream-intake.sh; this
+# workflow is the thin runner.
+
+on:
+  schedule:
+    - cron: '23 10 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Report every action without dispatching, writing state, or opening issues
+        type: boolean
+        default: false
+      soak_hours:
+        description: Hours a release must age upstream before packaging
+        type: string
+        default: '72'
+      max_dispatch:
+        description: Per-run dispatch cap (dropped count is logged)
+        type: string
+        default: '3'
+
+# actions: write  -> dispatch build-pack.yml + persist the observation
+#                    state variable
+# issues: write   -> SHA-drift and revalidation reports
+permissions:
+  contents: read
+  actions: write
+  issues: write
+
+jobs:
+  intake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0  # v2.12.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.53.2/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Run intake
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          SOAK_HOURS: ${{ inputs.soak_hours || '72' }}
+          MAX_DISPATCH: ${{ inputs.max_dispatch || '3' }}
+        run: bash scripts/upstream-intake.sh
