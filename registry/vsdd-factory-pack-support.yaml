@@ -181,34 +181,39 @@ wrinkles:
     resolved_in: null
     severity: acquisition-gap
     summary: >-
-      RESOLVED BY PROBE (finding-091, harness 2.1.220, 2026-07-31);
-      stays open until the enable design ships. The supported identity
-      surface is a sideshow-managed directory marketplace
-      (claude plugin marketplace add <dir>) whose entries use relative
-      source paths, which may be symlinks into the store; identity is
-      <pack>@<marketplace>. The skills-dir path is verified default-ON
-      (loads with zero settings entries) and is ruled out for
-      per_repo_required packs. plugin update is version-aware and
-      per-scope and resolves only through the named marketplace; a
-      directory source has no remote, so superseded claude-mp content
-      cannot be re-fetched under the sideshow identity. Load is LIVE
-      through the marketplace source path (the install-time cache is
-      not the load path): store GC must consult marketplace references
-      first, and the rendered hooks.json must exist inside the tree
-      the marketplace symlink resolves to (constrains the read-only
-      store freeze and hooks placement decisions).
+      RESOLVED BY PROBE in two rounds (finding-091 + addenda, harness
+      2.1.220, 2026-07-31); stays open until the enable design ships.
+      ROUND 3 (finding-094): delivery is repo bindings, not a
+      marketplace; sideshow writes no marketplace, installed_plugins,
+      or enabledPlugins state for its own channel. The directory-
+      marketplace facts below remain ground truth for the CONVERSION
+      side (reading and reversing foreign claude-mp installs): entries
+      use relative source paths, identity is <pack>@<marketplace>,
+      plugin update resolves only through the named marketplace, load
+      is LIVE through the marketplace source path. Repo-bindings
+      semantics verified by trials T15-T21 (finding-091 addendum 2):
+      the repo settings env block reaches hook execution, the Bash
+      tool, and subagent processes (the CLAUDE_PLUGIN_ROOT shim
+      resolves all 419 non-test references with zero rewriting);
+      symlinked skill dirs and agent files are followed (macOS);
+      a repo-scope skill shadows a same-name user-scope skill;
+      presence-is-activation at repo scope (the containment property);
+      omitted matcher is equivalent to matcher:""; PostToolUseFailure
+      registers and fires; nested agent dirs load with bare-name
+      addressing (no namespace qualifier exists at repo scope, so
+      namespaced subagent_type call sites must be rewritten at bind).
     adaptation: >-
-      Enable design (aae-orc-d3nq.5/.6/.7): one directory marketplace;
-      install --scope user, then disable --scope user, then per-repo
-      enable --scope project|local (project true overrides user
-      false). Declare validated harness floor 2.1.220 in pack.yaml.
-      Uninstall residue checklist (cache versions, stale
-      settings.local.json enables, marketplace entry) feeds
-      aae-orc-d3nq.20. Full trial log: aae-orc finding-091.
+      Enable design (aae-orc-d3nq.7/.48/.50/.52): materialize repo
+      bindings plus the settings env shim; claude-plugin verbs remain
+      the read/reverse surface for foreign installs (aae-orc-paqn,
+      aae-orc-d3nq.22). Declare validated harness floor 2.1.220 in
+      pack.yaml. Conversion-side trials T10/T11/T13/T14 tracked in
+      aae-orc-d3nq.62. Full trial log: aae-orc finding-091.
     references:
       - aae-orc#54 validation report §3 + gap 2
       - aae-orc _kos/findings/finding-091-claude-plugin-identity-directory-marketplace.md
-      - aae-orc-d3nq.4 (2026-07-31 probe, Claude Code 2.1.220)
+      - aae-orc _kos/findings/finding-094-unshaping-over-plugin-delivery.md
+      - aae-orc-d3nq.4 + aae-orc-d3nq.39 (2026-07-31 probes, Claude Code 2.1.220)
 
   - id: dispatcher-multi-platform-payload
     introduced_in: null
