@@ -37,17 +37,22 @@ activation:
   default_scope: per-repo
   per_repo_required: true
   rationale: >-
-    Ratified 2026-07-12, extended 2026-07-31 (aae-orc-d4cw):
-    vsdd-factory is per-repo-operation software — it runs IN a repo and
-    is not designed to run from an orchestrator or across repos.
-    Content MAY install to the user-scope store multi-version (bmad
-    model), but is never active by default at user scope; activation is
-    per repo, managed by sideshow. Sideshow delivery SUPERSEDES the
-    claude-mp marketplace binding: the marketplace supports neither
-    multi-version install nor supply-chain verification, and a user
-    selecting sideshow changes the consumer contract by that choice.
-    Enforcement is sideshow-side (Binding abstraction, aae-orc-f13j);
-    this register is the declaration both sides read.
+    Ratified 2026-07-12, extended 2026-07-31 (aae-orc-d4cw), reshaped
+    2026-07-31 (aae-orc finding-094): vsdd-factory is
+    per-repo-operation software — it runs IN a repo and is not
+    designed to run from an orchestrator or across repos. Content
+    installs to the user-scope store multi-version (bmad model) but is
+    never active anywhere by default; activation is per repo, by repo
+    bindings that sideshow materializes into one named repository. The
+    claude plugin is the upstream SOURCE FORMAT, not the delivery
+    mechanism: sideshow creates no harness plugin state for its own
+    channel (no marketplace, no install record, no enabledPlugins).
+    Coexistence with a foreign claude-mp install is supported per
+    machine and suppressed per repo (finding-093); same-repo
+    dual-enable is refused on double-dispatch grounds (finding-091
+    addendum 3). Enforcement is sideshow-side (repo-scoped bindings,
+    aae-orc-d3nq.48, successor to the closed aae-orc-f13j); this
+    register is the declaration both sides read.
 
 pipeline_assumptions:
   - id: plugin-dir-exists
