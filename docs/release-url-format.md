@@ -150,6 +150,24 @@ at the top. Today's schema is `0.1.0`. Future bumps follow
 [1]: ../.github/workflows/build-pack.yml
 [2]: https://github.com/ArcavenAE/sideshow-packs/commit/e666f4f
 
+## Latest marker policy
+
+The repo-wide GitHub Latest marker tracks the **highest published
+(non-draft) bmad pack version**. It is set explicitly at publish time
+(`gh release edit <tag> --latest`), never left to GitHub's default,
+which follows publish order and lands on the wrong release after a
+batch backfill (observed 2026-07-12: nine releases published within
+seconds left Latest on `bmad-v6.3.0` for two weeks; corrected
+2026-07-30, `aae-orc-l7t7`). The upstream-intake workflow verifies the
+marker on every run and self-heals drift.
+
+Consumers must **never resolve `/releases/latest`**. This repo
+publishes multiple packs over time (`aae-orc-zb12` onboarding), so a
+single repo-wide marker cannot identify "the current version" of any
+one pack. Resolution is always by explicit tag (`<pack>-v<semver>`)
+per this document. The marker exists for humans landing on the repo
+page, nothing else.
+
 ## Publishing gotchas
 
 - **Never push more than 3 tags in one `git push`.** GitHub suppresses
