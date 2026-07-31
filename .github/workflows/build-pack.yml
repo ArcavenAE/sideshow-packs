@@ -6,7 +6,7 @@ on:
       pack:
         description: Pack to build
         type: choice
-        options: [bmad]
+        options: [bmad, vsdd-factory]
         default: bmad
       version:
         description: Pack version (semver)
@@ -40,6 +40,7 @@ on:
   push:
     tags:
       - 'bmad-v*'
+      - 'vsdd-factory-v*'
 
 # Required for:
 #   - id-token: cosign keyless OIDC signing (Sigstore / Rekor)
@@ -103,12 +104,14 @@ jobs:
           BMAD_MODULES: ${{ inputs.modules || 'bmm,cis,gds,tea' }}
           BMAD_PINS: ${{ inputs.pins || 'auto' }}
           EXPECTED_UPSTREAM_SHA: ${{ inputs.expected_sha || '' }}
+          VSDD_VERSION: ${{ steps.params.outputs.version }}
           ALLOW_UNSUPPORTED: ${{ inputs.allow_unsupported && '1' || '0' }}
           COSIGN: ${{ (inputs.sign || github.ref_type == 'tag') && '1' || '0' }}
         run: |
           case "${{ steps.params.outputs.pack }}" in
-            bmad) bash scripts/build-bmad.sh ;;
-            *)    echo "unknown pack: ${{ steps.params.outputs.pack }}"; exit 1 ;;
+            bmad)         bash scripts/build-bmad.sh ;;
+            vsdd-factory) bash scripts/build-vsdd-factory.sh ;;
+            *)            echo "unknown pack: ${{ steps.params.outputs.pack }}"; exit 1 ;;
           esac
 
       - name: Attest provenance (GitHub native)

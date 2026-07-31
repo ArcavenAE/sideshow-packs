@@ -1,0 +1,230 @@
+# Pack-support register — vsdd-factory
+# Graduated from registry/drafts/ 2026-07-31 with the first validated
+# bracket (aae-orc-d4cw). Schema v0.2.0 fields; see
+# docs/pack-support-candidates.md.
+
+kind: pack-support
+schema_version: 0.2.0
+pack: vsdd-factory
+
+upstream:
+  repo: https://github.com/drbothen/vsdd-factory
+  default_branch: develop        # gitflow — HEAD is NOT release content
+  release_notes: https://github.com/drbothen/vsdd-factory/releases
+  content_root: plugins/vsdd-factory   # Claude plugin dir = the pack surface
+  binary_sources:
+    # The plugin ships compiled artifacts whose source lives in the
+    # same repo at the same tag (traced 2026-07-31, aae-orc-d4cw.2):
+    wasm_hook_plugins: crates/hook-plugins/   # 34 crates <-> 34 shipped .wasm
+    dispatcher: crates/factory-dispatcher     # 5 per-platform binaries
+    toolchain_pins: [rust-toolchain.toml, Cross.toml]
+
+version_scheme: semver-releases
+release_line: prerelease         # active line is v1.0.0-rc.N; stable line
+                                 # dormant at v0.79.4 (2026-04-24)
+
+acquisition:
+  method: direct-tree            # no upstream installer for content;
+                                 # capture plugins/vsdd-factory at tag.
+                                 # NOTE: releases carry NO assets (tag +
+                                 # notes only) — acquisition is git tree
+                                 # at tag, never release-asset download.
+
+redistribution: public-ok        # MIT: root LICENSE + plugin.json license
+                                 # field (reconfirmed @ rc.23, 2026-07-31)
+
+activation:
+  default_scope: per-repo
+  per_repo_required: true
+  rationale: >-
+    Ratified 2026-07-12, extended 2026-07-31 (aae-orc-d4cw):
+    vsdd-factory is per-repo-operation software — it runs IN a repo and
+    is not designed to run from an orchestrator or across repos.
+    Content MAY install to the user-scope store multi-version (bmad
+    model), but is never active by default at user scope; activation is
+    per repo, managed by sideshow. Sideshow delivery SUPERSEDES the
+    claude-mp marketplace binding: the marketplace supports neither
+    multi-version install nor supply-chain verification, and a user
+    selecting sideshow changes the consumer contract by that choice.
+    Enforcement is sideshow-side (Binding abstraction, aae-orc-f13j);
+    this register is the declaration both sides read.
+
+pipeline_assumptions:
+  - id: plugin-dir-exists
+    desc: plugins/vsdd-factory exists at the captured tag and is the complete content surface
+  - id: plugin-manifest-shape
+    desc: Claude plugin manifest parses; binding names/prefixes enumerable for per-repo enable/disable
+  - id: no-build-required
+    desc: content capture requires no cargo build (content ships prebuilt dispatcher binaries + wasm in-tree)
+  - id: exec-bits-preserved
+    desc: >-
+      capture and extraction preserve + verify mode bits (112
+      executables at rc.23 across bin/, hook-plugins/, hooks/, skills/,
+      templates/, tests/); build script fails on any drift
+  - id: harness-floor
+    desc: Claude Code >= 2.1.105 (advisory check-harness-version.sh, PreCompact, never blocks)
+
+validated:
+  - min: 1.0.0-rc.23
+    max: 1.0.0-rc.23   # inclusive; single-rung bracket
+    release_line: prerelease
+    validated_at: "2026-07-31"
+    method: >-
+      rc.22 -> rc.23 per-transition diff (56 plugin files classified) +
+      mechanical assumption verification against the tag (exec-bit
+      census, bookkeeping-file absence, platform templates, manifest
+      parse) + local prototype build through build-vsdd-factory.sh
+      (unsigned, sign=false analog of the bmad ladder) with tar
+      round-trip mode/byte verification
+    evidence:
+      - aae-orc bd epic aae-orc-d4cw (sub-task closures carry detail)
+      - skippy/arcavenai rc.22 prototype-bundle validation (aae-orc#54);
+        structural conclusions transfer to rc.23 (tree shape unchanged)
+# rc.22 remains packageable best-effort via ALLOW_UNSUPPORTED; it was
+# never run through the build pipeline, so it carries no bracket.
+# Skippy's rc.22 findings retained in the wrinkles + aae-orc#54:
+# raw-tree capture == plugin-installer output minus 2 per-machine
+# bookkeeping files; per-repo enable/disable real and atomic;
+# ~12,955 always-on tokens per enabled session (rc.23 re-estimate:
+# ~unchanged — skills/ byte-identical, agents/ +4.6KB on-demand only).
+
+wrinkles:
+  - id: release-lines-diverged
+    introduced_in: 0.79.4
+    resolved_in: null
+    severity: version-selection
+    summary: >-
+      Stable line dormant since v0.79.4 (2026-04-24); development ships
+      as v1.0.0-rc.N prerelease GitHub Releases (rc.23 @ 2026-07-18).
+      "Package vsdd-factory X" is ambiguous without naming the line.
+    adaptation: release_line field declares which line brackets apply to.
+    references:
+      - gh release list -R drbothen/vsdd-factory (2026-07-12 observation)
+
+  - id: gitflow-develop-head
+    introduced_in: null
+    resolved_in: null
+    severity: acquisition-caution
+    summary: >-
+      Default branch develop is ahead of any release; capturing HEAD
+      instead of a tag packages unreleased content.
+    adaptation: acquisition always by explicit tag, never branch HEAD.
+    references:
+      - repo defaultBranchRef=develop (2026-07-12 observation)
+
+  - id: release-retags-by-design
+    introduced_in: null
+    resolved_in: null
+    severity: acquisition-timing
+    summary: >-
+      Upstream release.yml builds dispatcher binaries on 5 platforms in
+      a commit-binaries job that commits them to main and FORCE-MOVES
+      the release tag onto the binary commit. Every release tag
+      legitimately moves once, shortly after creation. An observer that
+      records the tag SHA before commit-binaries lands will see drift
+      that is process, not attack.
+    adaptation: >-
+      Capture only the settled tag (the soak window absorbs this
+      naturally). If upstream-intake ever watches this repo, expect
+      one benign SHA-drift quarantine per release unless intake learns
+      a settle-then-observe rule from this register; the drift-issue
+      human ack is the correct interim handling either way.
+    references:
+      - .github/workflows/release.yml commit-binaries job @ v1.0.0-rc.23
+      - aae-orc-d4cw.2 (2026-07-31)
+
+  - id: plugin-carries-executables
+    introduced_in: null
+    resolved_in: null
+    severity: content-class
+    summary: >-
+      The plugin ships executable content — 112 executables at rc.23:
+      21 bin/ scripts, 34 wasm hook-plugins (16 mode-755), 5
+      per-platform dispatcher binaries, hook scripts, skill scripts —
+      not just markdown. Hooks active at user scope would fire in every
+      repo; this is the mechanical reason behind the per-repo
+      activation mandate. Compiled content traces to in-repo source
+      (upstream.binary_sources); redistribute-as-committed with
+      recorded SHAs is the accepted posture, trust basis equal to
+      bmad's npm tarball. Bit-exact rebuild verification is future
+      hardening, not done.
+    adaptation: >-
+      activation.per_repo_required=true; build script fails on
+      exec-bit drift and emits exec-manifest.txt; install.meta records
+      binary provenance.
+    references:
+      - plugins/vsdd-factory tree @ v1.0.0-rc.23 (2026-07-31)
+      - aae-orc-d4cw.2 provenance trace
+
+  - id: hooks-json-platform-bind
+    introduced_in: null
+    resolved_in: null
+    severity: silent-guardrail-absence
+    summary: >-
+      Upstream gitignores the canonical hooks/hooks.json; it is rendered
+      per-machine from hooks.json.<platform> by /vsdd-factory:activate.
+      A fresh install that is enabled but never activated loads 126
+      skills + 34 agents yet registers ZERO hooks — the factory's
+      guard/validate surface silently absent. Sharpest gap of the
+      prototype validation (aae-orc#54 report, item 1).
+    adaptation: >-
+      Sideshow install/enable must perform or require the one-time
+      platform bind (render hooks.json, verify dispatcher binary —
+      mirroring apply-platform.sh). Upstream nicety that would remove
+      the gap entirely: commit a seed hooks.json. Build verifies the
+      5 platform templates are present and the canonical file absent.
+    references:
+      - aae-orc#54 validation report §3-4
+
+  - id: plugin-identity-registration
+    introduced_in: null
+    resolved_in: null
+    severity: acquisition-gap
+    summary: >-
+      Claude Code addresses plugins as name@marketplace (enabledPlugins,
+      installed_plugins.json). A sideshow tarball installed outside the
+      marketplace mechanism needs an identity story: register with an
+      installPath, or the ~/.claude/skills/<name>/ auto-load path
+      (identity <name>@skills-dir) — whose default-enablement semantics
+      are UNVERIFIED and, if default-ON, would violate per-repo-only
+      policy. Probe before use. Enable lever for f13j:
+      claude plugin enable|disable --scope user|project|local.
+      2026-07-31 note: the marketplace identity is NOT a compatibility
+      target — sideshow delivery supersedes it by ratified contract;
+      the identity story only needs to satisfy per-repo enablement.
+    adaptation: none yet — follow-up probe; sideshow#50 covers the skills-dir half.
+    references:
+      - aae-orc#54 validation report §3 + gap 2
+
+  - id: dispatcher-multi-platform-payload
+    introduced_in: null
+    resolved_in: null
+    severity: packaging-decision
+    summary: >-
+      ~34 MB of the 36.9 MB bundle is hooks/dispatcher/bin/<platform>/
+      factory-dispatcher x5 platforms, committed in-tree. Platform-
+      sliced bundle would be ~10 MB but diverges from upstream's own
+      ship-all-five-bind-at-activation model.
+    adaptation: undecided — record; default to upstream parity (all five).
+    references:
+      - aae-orc#54 validation report §1
+
+  - id: plugin-version-vs-content-drift
+    introduced_in: null
+    resolved_in: null
+    severity: provenance-caution
+    summary: >-
+      Plugin content froze rc.20 -> rc.22 while repo tags advanced,
+      then the freeze ENDED at rc.23 (56 plugin files: 22 wasm rebuilt,
+      3 deleted, 5 dispatchers rebuilt, 2 new bin scripts, in-plugin
+      bats tests first shipped). Content stability between adjacent
+      tags is version-specific; never assume either freeze or churn.
+      Bundle version follows the CAPTURED TAG, with content sha in the
+      manifest, so identical-content bundles at different tags remain
+      distinguishable and honest.
+    adaptation: file-manifest.csv + tag + subtree sha recorded in install.meta.
+    references:
+      - compare v1.0.0-rc.20...v1.0.0-rc.22 plugin_files=0 (2026-07-12)
+      - compare v1.0.0-rc.22...v1.0.0-rc.23 plugin_files=56 (2026-07-31, aae-orc-d4cw.1)
+
+llm_runbook: registry/pack-support-revalidation-runbook.md
