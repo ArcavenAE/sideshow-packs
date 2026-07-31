@@ -181,20 +181,34 @@ wrinkles:
     resolved_in: null
     severity: acquisition-gap
     summary: >-
-      Claude Code addresses plugins as name@marketplace (enabledPlugins,
-      installed_plugins.json). A sideshow tarball installed outside the
-      marketplace mechanism needs an identity story: register with an
-      installPath, or the ~/.claude/skills/<name>/ auto-load path
-      (identity <name>@skills-dir) — whose default-enablement semantics
-      are UNVERIFIED and, if default-ON, would violate per-repo-only
-      policy. Probe before use. Enable lever for f13j:
-      claude plugin enable|disable --scope user|project|local.
-      2026-07-31 note: the marketplace identity is NOT a compatibility
-      target — sideshow delivery supersedes it by ratified contract;
-      the identity story only needs to satisfy per-repo enablement.
-    adaptation: none yet — follow-up probe; sideshow#50 covers the skills-dir half.
+      RESOLVED BY PROBE (finding-091, harness 2.1.220, 2026-07-31);
+      stays open until the enable design ships. The supported identity
+      surface is a sideshow-managed directory marketplace
+      (claude plugin marketplace add <dir>) whose entries use relative
+      source paths, which may be symlinks into the store; identity is
+      <pack>@<marketplace>. The skills-dir path is verified default-ON
+      (loads with zero settings entries) and is ruled out for
+      per_repo_required packs. plugin update is version-aware and
+      per-scope and resolves only through the named marketplace; a
+      directory source has no remote, so superseded claude-mp content
+      cannot be re-fetched under the sideshow identity. Load is LIVE
+      through the marketplace source path (the install-time cache is
+      not the load path): store GC must consult marketplace references
+      first, and the rendered hooks.json must exist inside the tree
+      the marketplace symlink resolves to (constrains the read-only
+      store freeze and hooks placement decisions).
+    adaptation: >-
+      Enable design (aae-orc-d3nq.5/.6/.7): one directory marketplace;
+      install --scope user, then disable --scope user, then per-repo
+      enable --scope project|local (project true overrides user
+      false). Declare validated harness floor 2.1.220 in pack.yaml.
+      Uninstall residue checklist (cache versions, stale
+      settings.local.json enables, marketplace entry) feeds
+      aae-orc-d3nq.20. Full trial log: aae-orc finding-091.
     references:
       - aae-orc#54 validation report §3 + gap 2
+      - aae-orc _kos/findings/finding-091-claude-plugin-identity-directory-marketplace.md
+      - aae-orc-d3nq.4 (2026-07-31 probe, Claude Code 2.1.220)
 
   - id: dispatcher-multi-platform-payload
     introduced_in: null
