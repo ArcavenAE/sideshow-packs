@@ -25,6 +25,10 @@ on:
         description: Build a version outside the validated support bracket (best-effort; see registry/pack-support-revalidation-runbook.md)
         type: boolean
         default: false
+      expected_sha:
+        description: "Expected upstream commit SHA: build fails unless npm's gitHead matches (set by upstream-intake; empty skips the check)"
+        type: string
+        default: ""
       sign:
         description: Sign + attest with cosign (OIDC keyless)
         type: boolean
@@ -98,6 +102,7 @@ jobs:
           BMAD_VERSION: ${{ steps.params.outputs.version }}
           BMAD_MODULES: ${{ inputs.modules || 'bmm,cis,gds,tea' }}
           BMAD_PINS: ${{ inputs.pins || 'auto' }}
+          EXPECTED_UPSTREAM_SHA: ${{ inputs.expected_sha || '' }}
           ALLOW_UNSUPPORTED: ${{ inputs.allow_unsupported && '1' || '0' }}
           COSIGN: ${{ (inputs.sign || github.ref_type == 'tag') && '1' || '0' }}
         run: |

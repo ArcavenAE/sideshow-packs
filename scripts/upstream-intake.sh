@@ -6,9 +6,11 @@
 # Deliberately does NOT follow upstream closely. A release younger
 # than SOAK_HOURS is only observed (its tag SHA is recorded), never
 # packaged. A later run re-resolves the SHA; if it moved during the
-# window, the version is refused and an issue is opened instead. This
-# is the retag-or-yank guard: a delay only helps if something checks
-# whether anything changed during it.
+# window, the version is refused and a quarantine issue is opened.
+# The version stays quarantined while that issue is open; closing the
+# issue is the human acknowledgment that lets the (restarted) soak
+# proceed. This is the retag-or-yank guard: a delay only helps if
+# something checks whether anything changed during it.
 #
 # Versions outside the validated bracket in
 # registry/<pack>-pack-support.yaml are never dispatched (the build
@@ -16,9 +18,18 @@
 # pointing at the llm_runbook; once the bracket is extended, the next
 # run dispatches them.
 #
-# State: one repo Actions variable (UPSTREAM_INTAKE_OBSERVATIONS)
-# holding {"<version>": {"sha": "...", "first_seen": "<iso8601>"}}.
-# Entries are pruned once their version is packaged.
+# Dispatches carry expected_sha, which build-bmad.sh verifies against
+# the npm package's gitHead before running the installer, binding the
+# soaked git tag to the artifact actually consumed.
+#
+# State: a machine-maintained ledger issue on this repo (title in
+# LEDGER_TITLE below) whose body carries a fenced JSON block:
+# {"<version>": {"sha": "...", "first_seen": "<iso8601>"}}. Entries
+# are pruned once their version is packaged. Issues were chosen over
+# repo Actions variables because GITHUB_TOKEN's `issues: write` is a
+# documented grant for issue create/edit, while the variables
+# endpoints want a separate Variables permission that GITHUB_TOKEN
+# cannot be granted.
 #
 # Environment:
 #   DRY_RUN        0|1 (default 0). 1 = report every action, change nothing.
@@ -38,8 +49,10 @@
 #   UPSTREAM_RELEASES_FILE  [{tag_name, published_at, draft, prerelease}]
 #   LOCAL_RELEASES_FILE     [{tag_name, draft}]
 #   SHA_FILE                {"<tag>": "<commit sha>"}
-#   OBS_FILE                observations JSON, read+write (bypasses the
-#                           Actions variable)
+#   ISSUES_FILE             [{number, title, body}] open issues (also
+#                           carries the ledger issue when present)
+#   OBS_FILE                observations JSON, read+write (takes
+#                           precedence over the ledger issue)
 #   REGISTRY_FILE           pack-support register override
 #   CURRENT_LATEST          tag currently carrying the Latest marker
 #   NOW_EPOCH               fixed clock
@@ -53,7 +66,17 @@ MAX_DISPATCH="${MAX_DISPATCH:-3}"
 REPO="${REPO:-ArcavenAE/sideshow-packs}"
 UPSTREAM="${UPSTREAM:-bmad-code-org/BMAD-METHOD}"
 PACK="${PACK:-bmad}"
-OBS_VAR="UPSTREAM_INTAKE_OBSERVATIONS"
+LEDGER_TITLE="upstream-intake: observation ledger (machine state)"
+
+# Numeric settings reach bash arithmetic contexts, which evaluate
+# array subscripts and therefore command substitutions. Reject
+# anything that is not a plain non-negative integer before first use.
+require_uint() {
+    [[ "$2" =~ ^[0-9]+$ ]] || { echo "error: $1 must be a non-negative integer (got: $2)"; exit 1; }
+}
+require_uint SOAK_HOURS "${SOAK_HOURS}"
+require_uint MIN_OBS_HOURS "${MIN_OBS_HOURS}"
+require_uint MAX_DISPATCH "${MAX_DISPATCH}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REGISTRY_FILE="${REGISTRY_FILE:-${ROOT}/registry/${PACK}-pack-support.yaml}"
@@ -68,6 +91,10 @@ dryrun_prefix() { [[ "${DRY_RUN}" == "1" ]] && echo "DRY-RUN: would " || echo ""
 
 iso_to_epoch() {
     python3 -c "import sys,datetime; print(int(datetime.datetime.fromisoformat(sys.argv[1].replace('Z','+00:00')).timestamp()))" "$1"
+}
+
+epoch_to_iso() {
+    python3 -c "import sys,datetime; print(datetime.datetime.fromtimestamp(int(sys.argv[1]),datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))" "$1"
 }
 
 NOW="${NOW_EPOCH:-$(date -u +%s)}"
@@ -95,26 +122,73 @@ local_releases_json() {
     fi
 }
 
-resolve_sha() { # upstream tag -> commit sha
-    local tag="$1"
+resolve_sha() { # upstream tag -> commit sha (empty + nonzero on failure)
+    local tag="$1" out
     if [[ -n "${SHA_FILE:-}" ]]; then
         jq -r --arg t "$tag" '.[$t] // empty' "${SHA_FILE}"
     else
-        gh api "repos/${UPSTREAM}/commits/${tag}" --jq .sha
+        # On HTTP errors gh api prints the error body to stdout; discard
+        # captured output on failure so it cannot masquerade as a SHA.
+        if ! out="$(gh api "repos/${UPSTREAM}/commits/${tag}" --jq .sha 2>/dev/null)"; then
+            return 1
+        fi
+        echo "${out}"
     fi
 }
 
+# --- Open issues: quarantine checks + the observation ledger -----------
+
+open_issues_json() {
+    if [[ -n "${ISSUES_FILE:-}" ]]; then
+        [[ -f "${ISSUES_FILE}" ]] && cat "${ISSUES_FILE}" || echo '[]'
+    else
+        gh issue list -R "${REPO}" --state open --limit 100 --json number,title,body
+    fi
+}
+ISSUES_JSON="$(open_issues_json)"
+jq -e 'type == "array"' <<< "${ISSUES_JSON}" >/dev/null 2>&1 || ISSUES_JSON='[]'
+
+issue_open() { # title -> 0 if an open issue carries it
+    jq -e --arg t "$1" 'any(.[]; .title == $t)' <<< "${ISSUES_JSON}" >/dev/null
+}
+
+ensure_issue() { # title body
+    local title="$1" body="$2"
+    if issue_open "${title}"; then
+        log "issue already open: ${title}"
+        return 0
+    fi
+    if [[ "${DRY_RUN}" == "1" || -n "${ISSUES_FILE:-}" ]]; then
+        log "$(dryrun_prefix)open issue: ${title}"
+    else
+        gh issue create -R "${REPO}" --title "${title}" --body "${body}" >/dev/null
+        log "opened issue: ${title}"
+    fi
+    # Keep the in-run view consistent so a later step sees it as open.
+    ISSUES_JSON="$(jq -c --arg t "$title" '. + [{title: $t}]' <<< "${ISSUES_JSON}")"
+}
+
+drift_title() { # version
+    echo "upstream-intake: ${PACK} v${1} tag SHA changed during soak"
+}
+
+LEDGER_NUMBER="$(jq -r --arg t "${LEDGER_TITLE}" \
+    'first(.[] | select(.title == $t)) | .number // empty' <<< "${ISSUES_JSON}")"
+
 load_obs() {
-    local out
+    local body
     if [[ -n "${OBS_FILE:-}" ]]; then
         [[ -f "${OBS_FILE}" ]] && cat "${OBS_FILE}" || echo '{}'
         return 0
     fi
-    # On HTTP 404 gh api prints the error body to stdout; the || must
-    # overwrite it, not append to it.
-    out="$(gh api "repos/${REPO}/actions/variables/${OBS_VAR}" --jq .value 2>/dev/null)" || out='{}'
-    [[ -z "${out}" ]] && out='{}'
-    echo "${out}"
+    body="$(jq -r --arg t "${LEDGER_TITLE}" \
+        'first(.[] | select(.title == $t)) | .body // empty' <<< "${ISSUES_JSON}")"
+    # Extract the fenced JSON block; tolerate CRLF from web edits.
+    printf '%s\n' "${body}" | tr -d '\r' | awk '/^```json$/{f=1;next} /^```/{f=0} f'
+}
+
+ledger_body() { # obs-json
+    printf 'Machine-maintained by `.github/workflows/upstream-intake.yml` (bd `aae-orc-4t1k`). Records the first-observed tag SHA per unpackaged upstream version so a later run can detect retags during the soak window. Do not hand-edit; closing this issue resets all observations.\n\n```json\n%s\n```\n' "$1"
 }
 
 save_obs() { # json
@@ -127,28 +201,12 @@ save_obs() { # json
         printf '%s' "${json}" > "${OBS_FILE}"
         return 0
     fi
-    if ! gh api -X PATCH "repos/${REPO}/actions/variables/${OBS_VAR}" \
-            --raw-field name="${OBS_VAR}" --raw-field value="${json}" >/dev/null 2>&1; then
-        gh api -X POST "repos/${REPO}/actions/variables" \
-            --raw-field name="${OBS_VAR}" --raw-field value="${json}" >/dev/null \
-        || { echo "error: cannot persist ${OBS_VAR} (needs actions: write)"; exit 1; }
-    fi
-}
-
-ensure_issue() { # title body
-    local title="$1" body="$2"
-    local exists
-    exists="$(gh issue list -R "${REPO}" --state open --json title \
-        | jq -r --arg t "$title" '[.[] | select(.title == $t)] | length')"
-    if [[ "${exists}" != "0" ]]; then
-        log "issue already open: ${title}"
-        return 0
-    fi
-    if [[ "${DRY_RUN}" == "1" ]]; then
-        log "DRY-RUN: would open issue: ${title}"
+    if [[ -n "${LEDGER_NUMBER}" ]]; then
+        gh issue edit "${LEDGER_NUMBER}" -R "${REPO}" --body "$(ledger_body "${json}")" >/dev/null
     else
-        gh issue create -R "${REPO}" --title "${title}" --body "${body}" >/dev/null
-        log "opened issue: ${title}"
+        gh issue create -R "${REPO}" --title "${LEDGER_TITLE}" \
+            --body "$(ledger_body "${json}")" >/dev/null
+        log "created ledger issue"
     fi
 }
 
@@ -227,9 +285,8 @@ for ver in ${MISSING}; do
     published_epoch="$(iso_to_epoch "${published_at}")"
     published_age_h=$(( (NOW - published_epoch) / 3600 ))
 
-    sha_now="$(resolve_sha "$tag")"
-    if [[ -z "${sha_now}" ]]; then
-        log "WARN: cannot resolve SHA for ${tag}; skipping"
+    if ! sha_now="$(resolve_sha "$tag")" || [[ -z "${sha_now}" ]]; then
+        log "WARN: cannot resolve SHA for ${tag} (deleted tag, API error, or permissions); skipping"
         continue
     fi
 
@@ -237,8 +294,7 @@ for ver in ${MISSING}; do
     obs_seen="$(jq -r --arg v "$ver" '.[$v].first_seen // empty' <<< "${OBS}")"
 
     if [[ -z "${obs_sha}" ]]; then
-        OBS="$(jq -c --arg v "$ver" --arg s "$sha_now" \
-            --arg t "$(python3 -c "import datetime;print(datetime.datetime.fromtimestamp(${NOW},datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")" \
+        OBS="$(jq -c --arg v "$ver" --arg s "$sha_now" --arg t "$(epoch_to_iso "${NOW}")" \
             '. + {($v): {sha: $s, first_seen: $t}}' <<< "${OBS}")"
         OBS_CHANGED=1
         log "${ver}: first observation (published ${published_age_h}h ago, sha ${sha_now:0:12}); soaking"
@@ -248,10 +304,9 @@ for ver in ${MISSING}; do
     if [[ "${obs_sha}" != "${sha_now}" ]]; then
         log "${ver}: REFUSED, tag SHA changed during soak (${obs_sha:0:12} -> ${sha_now:0:12})"
         ensure_issue \
-            "upstream-intake: ${PACK} ${tag} tag SHA changed during soak" \
-            "The upstream tag \`${tag}\` on ${UPSTREAM} resolved to \`${obs_sha}\` when first observed (${obs_seen}) and now resolves to \`${sha_now}\`. This looks like a retag or force-push. Packaging is refused; the soak restarts against the new SHA. If the retag is legitimate, close this issue and let the next scheduled run package it after the window. bd: aae-orc-4t1k."
-        OBS="$(jq -c --arg v "$ver" --arg s "$sha_now" \
-            --arg t "$(python3 -c "import datetime;print(datetime.datetime.fromtimestamp(${NOW},datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")" \
+            "$(drift_title "${ver}")" \
+            "The upstream tag \`${tag}\` on ${UPSTREAM} resolved to \`${obs_sha}\` when first observed (${obs_seen}) and now resolves to \`${sha_now}\`. This looks like a retag or force-push. Packaging is refused and the version stays quarantined while this issue is open; the soak restarts against the new SHA. If the retag is legitimate, close this issue; the next scheduled run after the restarted window packages it. bd: aae-orc-4t1k."
+        OBS="$(jq -c --arg v "$ver" --arg s "$sha_now" --arg t "$(epoch_to_iso "${NOW}")" \
             '. + {($v): {sha: $s, first_seen: $t}}' <<< "${OBS}")"
         OBS_CHANGED=1
         continue
@@ -262,6 +317,13 @@ for ver in ${MISSING}; do
 
     if (( published_age_h < SOAK_HOURS )) || (( obs_age_h < MIN_OBS_HOURS )); then
         log "${ver}: soaking (published ${published_age_h}h/${SOAK_HOURS}h, observed ${obs_age_h}h/${MIN_OBS_HOURS}h, sha stable)"
+        continue
+    fi
+
+    # A past SHA drift quarantines the version until a human closes the
+    # drift issue, even after the soak restarts and completes.
+    if issue_open "$(drift_title "${ver}")"; then
+        log "${ver}: quarantined, drift issue still open; close it to accept the current SHA"
         continue
     fi
 
@@ -279,7 +341,7 @@ for ver in ${MISSING}; do
     fi
 
     mods="$(modules_for "${ver}")"
-    log "$(dryrun_prefix)dispatch build-pack.yml: pack=${PACK} version=${ver} modules=${mods} pins=auto sign=true publish=true"
+    log "$(dryrun_prefix)dispatch build-pack.yml: pack=${PACK} version=${ver} modules=${mods} pins=auto sign=true publish=true expected_sha=${sha_now}"
     if [[ "${DRY_RUN}" != "1" ]]; then
         gh workflow run build-pack.yml -R "${REPO}" \
             -f pack="${PACK}" \
@@ -287,7 +349,8 @@ for ver in ${MISSING}; do
             -f modules="${mods}" \
             -f pins=auto \
             -f sign=true \
-            -f publish=true
+            -f publish=true \
+            -f expected_sha="${sha_now}"
     fi
     DISPATCHED=$((DISPATCHED + 1))
 done

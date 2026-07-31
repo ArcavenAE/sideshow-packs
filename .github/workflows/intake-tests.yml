@@ -1,0 +1,38 @@
+name: Intake tests
+
+# Scenario tests for the upstream-intake state machine. Fixture-driven
+# through the script's test seams: no network, no mutations.
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/upstream-intake.yml'
+      - '.github/workflows/intake-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0  # v2.12.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.53.2/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Run scenario tests
+        run: bash scripts/test-upstream-intake.sh

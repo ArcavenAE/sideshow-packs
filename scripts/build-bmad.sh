@@ -27,6 +27,11 @@
 #                    "cis=v0.2.0,gds=v0.6.0" = explicit pin list
 #   OUT_DIR        (default: ./artifacts)
 #   COSIGN         (default: 0)
+#   EXPECTED_UPSTREAM_SHA (default: empty) — when set, the build fails
+#                  unless npm's recorded gitHead for
+#                  bmad-method@VERSION equals it, verified BEFORE the
+#                  installer runs. Binds the artifact to the git tag
+#                  SHA observed during upstream-intake's soak window.
 
 set -euo pipefail
 
@@ -142,6 +147,24 @@ else
         PIN_FLAGS+=(--pin "${code}=${tag}")
         REQUESTED_PINS_JSON="$(jq -c --arg k "$code" --arg v "$tag" '. + {($k): $v}' <<< "$REQUESTED_PINS_JSON")"
     done
+fi
+
+# Provenance pre-check: verify the npm package's gitHead against the
+# SHA observed during the intake soak window, BEFORE any upstream code
+# executes. npm versions are immutable but the git tag is not; this
+# check binds the two (upstream-intake dispatches expected_sha).
+EXPECTED_UPSTREAM_SHA="${EXPECTED_UPSTREAM_SHA:-}"
+if [[ -n "${EXPECTED_UPSTREAM_SHA}" ]]; then
+    NPM_GIT_HEAD="$(npm view "bmad-method@${BMAD_VERSION}" gitHead 2>/dev/null || echo '')"
+    if [[ -z "${NPM_GIT_HEAD}" ]]; then
+        echo "[build-bmad] FATAL: EXPECTED_UPSTREAM_SHA set but npm records no gitHead for bmad-method@${BMAD_VERSION}; cannot verify provenance"
+        exit 1
+    fi
+    if [[ "${NPM_GIT_HEAD}" != "${EXPECTED_UPSTREAM_SHA}" ]]; then
+        echo "[build-bmad] FATAL: upstream provenance mismatch: npm gitHead ${NPM_GIT_HEAD} != expected ${EXPECTED_UPSTREAM_SHA} (observed git tag SHA)"
+        exit 1
+    fi
+    echo "[build-bmad] upstream provenance verified: npm gitHead matches observed tag SHA (${NPM_GIT_HEAD})"
 fi
 
 WORK="$(mktemp -d -t bmad-pack-XXXXXX)"

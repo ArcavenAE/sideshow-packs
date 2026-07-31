@@ -23,13 +23,21 @@ on:
         type: string
         default: '3'
 
-# actions: write  -> dispatch build-pack.yml + persist the observation
-#                    state variable
-# issues: write   -> SHA-drift and revalidation reports
+# contents: write -> gh release edit --latest (marker self-heal uses
+#                    the update-release endpoint)
+# actions: write  -> dispatch build-pack.yml
+# issues: write   -> observation-ledger issue + SHA-drift quarantine
+#                    and revalidation reports
 permissions:
-  contents: read
+  contents: write
   actions: write
   issues: write
+
+# A scheduled run and a manual run reading the same ledger must not
+# race: duplicate dispatches plus a lost ledger write.
+concurrency:
+  group: upstream-intake
+  cancel-in-progress: false
 
 jobs:
   intake:
