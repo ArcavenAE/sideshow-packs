@@ -51,6 +51,12 @@ For pack `<pack>` at version `<v>`:
 | `install.meta.json` | Machine-readable predicate (same shape as YAML, no comments) |
 | `install.meta.yaml.sig` / `install.meta.yaml.bundle` | cosign sig + bundle for the YAML |
 | `file-manifest.csv` | Per-file `sha256,size,relpath` — the parity reference for `aae-orc-7dri` |
+| `exec-manifest.txt` | Sorted relpaths that must carry exec bits after extraction — the mode-bit contract. Empty for packs that ship no executables (bmad); 112 entries for vsdd-factory at rc.23 |
+
+Both manifests are covered by the signature chain transitively:
+`install.meta` records `artifact.file_manifest_sha256` and
+`artifact.exec_manifest_sha256`, and `install.meta` itself is the
+attestation predicate.
 
 ## Resolution by sideshow
 
@@ -69,35 +75,51 @@ For verification it also fetches:
 .../file-manifest.csv                          # post-extract integrity check
 ```
 
-## Verification recipe
+## Verification recipe (attest-first)
 
-After download:
+The provenance record you trust is the one inside the verified
+attestation, not the standalone `install.meta.json` asset (which is
+convenient but unauthenticated on its own). Order matters:
 
 ```sh
-# Verify the signature bundle (no key needed; Sigstore Rekor backed)
+# 1. Verify the signature bundle (no key needed; Sigstore Rekor backed)
 cosign verify-blob \
   --bundle bmad-6.3.0-arcaven.tar.gz.bundle \
   --certificate-identity-regexp "https://github.com/ArcavenAE/sideshow-packs/.github/workflows/.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   bmad-6.3.0-arcaven.tar.gz
 
-# Verify the attestation (provenance predicate)
+# 2. Verify the attestation (provenance predicate)
 cosign verify-blob-attestation \
   --bundle bmad-6.3.0-arcaven.tar.gz.attest.bundle \
   --certificate-identity-regexp "https://github.com/ArcavenAE/sideshow-packs/.github/workflows/.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --type "https://arcaven.com/sideshow/install-meta/v0.1.0" \
   bmad-6.3.0-arcaven.tar.gz
+
+# 3. Extract install.meta FROM the verified attestation payload
+jq -r '.dsseEnvelope.payload' bmad-6.3.0-arcaven.tar.gz.attest.bundle \
+  | base64 -d | jq '.predicate' > install.meta.verified.json
+
+# 4. Check the downloaded manifests against the attested hashes
+jq -r '.artifact.file_manifest_sha256' install.meta.verified.json
+shasum -a 256 file-manifest.csv     # must match
+jq -r '.artifact.exec_manifest_sha256' install.meta.verified.json
+shasum -a 256 exec-manifest.txt     # must match
 ```
 
-Both should print `Verified OK`. Any other output (signature mismatch,
-identity mismatch, Rekor lookup failure) is a tampering or
-misconfiguration signal — refuse the artifact.
+Steps 1-2 should print `Verified OK`. Any other output (signature
+mismatch, identity mismatch, Rekor lookup failure, hash mismatch) is a
+tampering or misconfiguration signal — refuse the artifact.
 
-After extract, a sideshow client should additionally verify
-`file-manifest.csv` matches the on-disk tree (sha256 per file). This
-catches extraction-time corruption and ensures bytewise reproducibility
-of the install state.
+After extract, a sideshow client additionally verifies the tree
+against the now-authenticated manifests: sha256 per file from
+`file-manifest.csv` (bytes), and the exec bit on every path in
+`exec-manifest.txt` (modes). This catches extraction-time corruption
+and ensures the install state reproduces the signed contract exactly.
+Older releases (bmad-v6.x cut before this contract) predate
+`exec-manifest.txt` and the attested manifest hashes; for those, only
+steps 1-2 plus the file-manifest byte check apply.
 
 ## Identity binding
 

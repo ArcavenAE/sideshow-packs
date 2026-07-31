@@ -141,3 +141,4 @@ jobs:
             artifacts/install.meta.yaml
             artifacts/install.meta.json
             artifacts/file-manifest.csv
+            artifacts/exec-manifest.txt
