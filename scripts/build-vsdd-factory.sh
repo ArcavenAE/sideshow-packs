@@ -158,11 +158,14 @@ schema_version: 0.1.0
 # neither multi-version install nor supply-chain verification, and a
 # user selecting sideshow changes the consumer contract by that choice.
 # Enforcement: sideshow Binding abstraction (aae-orc-f13j); until it
-# lands, per-repo enablement is a documented manual step.
+# lands, per-repo enablement is a documented manual step; the runbook
+# below is the contract (verified on Claude Code 2.1.220, finding-091).
 activation:
   default_scope: per-repo
   per_repo_required: true
   mechanism: claude-plugin
+  runbook: https://github.com/ArcavenAE/sideshow/blob/main/docs/claude-plugin-enablement.md
+  validated_harness_floor: "claude-code 2.1.220"
 YAML
 
 # 5. file-manifest.csv (sha256,size,relpath) + exec-manifest.txt.
