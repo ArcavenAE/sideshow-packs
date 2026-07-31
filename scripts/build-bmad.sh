@@ -8,6 +8,7 @@
 #   artifacts/bmad-<version>-arcaven.tar.gz
 #   artifacts/install.meta.yaml
 #   artifacts/file-manifest.csv
+#   artifacts/exec-manifest.txt
 #
 # If COSIGN=1 and cosign is installed, also emits signatures +
 # attestations (keyless OIDC in CI; local runs need identity/keys).
@@ -280,6 +281,22 @@ echo "[build-bmad] computing file manifest"
 ) > "${OUT_DIR}/file-manifest.csv"
 FILE_COUNT=$(wc -l < "${OUT_DIR}/file-manifest.csv" | tr -d ' ')
 
+# 4b. exec-manifest.txt + manifest hashes (aae-orc-d3nq.12): same
+# contract shape as build-vsdd-factory.sh so consumers verify every
+# pack identically. bmad ships no executables today; an empty manifest
+# recording that fact is still part of the signed contract.
+(
+    cd "${PACK_STAGE}"
+    find . -type f -perm -0100 | sed 's|^\./||' | LC_ALL=C sort
+) > "${OUT_DIR}/exec-manifest.txt"
+if command -v sha256sum >/dev/null; then
+    FILE_MANIFEST_SHA="$(sha256sum "${OUT_DIR}/file-manifest.csv" | awk '{print $1}')"
+    EXEC_MANIFEST_SHA="$(sha256sum "${OUT_DIR}/exec-manifest.txt" | awk '{print $1}')"
+else
+    FILE_MANIFEST_SHA="$(shasum -a 256 "${OUT_DIR}/file-manifest.csv" | awk '{print $1}')"
+    EXEC_MANIFEST_SHA="$(shasum -a 256 "${OUT_DIR}/exec-manifest.txt" | awk '{print $1}')"
+fi
+
 # 5. Parse modules from the bmad manifest for provenance metadata.
 BMAD_MANIFEST="${PACK_STAGE}/_config/manifest.yaml"
 if [[ ! -f "${BMAD_MANIFEST}" ]]; then
@@ -360,6 +377,8 @@ jq -n \
   --arg tarball_sha256 "${TARBALL_SHA}" \
   --argjson tarball_bytes "${TARBALL_SIZE}" \
   --argjson file_count "${FILE_COUNT}" \
+  --arg file_manifest_sha256 "${FILE_MANIFEST_SHA}" \
+  --arg exec_manifest_sha256 "${EXEC_MANIFEST_SHA}" \
   --arg signing_status "${SIGNING_STATUS}" \
   '{
     schema_version: "0.1.0",
@@ -400,6 +419,8 @@ jq -n \
       tarball_sha256: $tarball_sha256,
       tarball_bytes: $tarball_bytes,
       file_count: $file_count,
+      file_manifest_sha256: $file_manifest_sha256,
+      exec_manifest_sha256: $exec_manifest_sha256,
       layout: (["_config/", "core/"]
         + ($modules_csv | split(",") | map(. + "/"))
         + [".claude/"])
@@ -425,6 +446,7 @@ HEADER
 echo "[build-bmad] emitted ${META}"
 echo "[build-bmad] emitted ${META_JSON}"
 echo "[build-bmad] emitted ${OUT_DIR}/file-manifest.csv (${FILE_COUNT} files)"
+echo "[build-bmad] emitted ${OUT_DIR}/exec-manifest.txt"
 echo "[build-bmad] tarball ${TARBALL} (${TARBALL_SIZE} bytes, sha256 ${TARBALL_SHA})"
 
 # 8. Signing + attestation (keyless OIDC in CI; opt-in locally).

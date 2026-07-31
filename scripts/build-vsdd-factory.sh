@@ -50,8 +50,27 @@ command -v git >/dev/null || { echo "error: git required"; exit 1; }
 command -v jq >/dev/null || { echo "error: jq required"; exit 1; }
 command -v yq >/dev/null || { echo "error: yq required"; exit 1; }
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REGISTER="${SCRIPT_DIR}/../registry/vsdd-factory-pack-support.yaml"
+
 # Packaging-support pre-flight (same gate as bmad).
-bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/check-support.sh" vsdd-factory "${VSDD_VERSION}"
+bash "${SCRIPT_DIR}/check-support.sh" vsdd-factory "${VSDD_VERSION}"
+
+# Provenance pin default (aae-orc-d3nq.11): when no SHA arrives via env
+# or workflow input, fall back to the register's validated bracket.
+# upstream_commit is meaningful only on single-rung brackets (min==max);
+# upstream force-moves release tags by design, so a signed build with
+# no pin would notarize whatever the tag points at today.
+if [[ -z "${EXPECTED_UPSTREAM_SHA}" ]]; then
+    EXPECTED_UPSTREAM_SHA="$(yq ".validated[] | select(.min == \"${VSDD_VERSION}\" and .max == \"${VSDD_VERSION}\") | .upstream_commit // \"\"" "${REGISTER}" 2>/dev/null | head -1)"
+    if [[ -n "${EXPECTED_UPSTREAM_SHA}" ]]; then
+        echo "[build-vsdd] SHA pin from register: ${EXPECTED_UPSTREAM_SHA}"
+    fi
+fi
+if [[ "${COSIGN}" == "1" && -z "${EXPECTED_UPSTREAM_SHA}" ]]; then
+    echo "[build-vsdd] FATAL: signing build with no upstream SHA pin (env, workflow input, or register upstream_commit)"
+    exit 1
+fi
 
 WORK="$(mktemp -d -t vsdd-pack-XXXXXX)"
 trap 'rm -rf "$WORK"' EXIT
@@ -94,6 +113,13 @@ fi
 PACK_STAGE="${WORK}/pack"
 mkdir -p "${PACK_STAGE}"
 cp -R "${WORK}/src/${SUBTREE}/." "${PACK_STAGE}/"
+
+# license-notice (aae-orc-d3nq.10): MIT requires the copyright and
+# permission notice to accompany all copies, and the plugin subtree
+# ships no LICENSE file. Stage the clone-root license into the pack so
+# it lands in file-manifest.csv and the tarball.
+cp "${WORK}/src/LICENSE" "${PACK_STAGE}/LICENSE"
+echo "[build-vsdd] staged clone-root LICENSE into pack"
 
 # 3. Verify pipeline assumptions mechanically (register:
 #    pipeline_assumptions). Each failure is fatal.
@@ -209,6 +235,18 @@ else
     TARBALL_SIZE=$(stat -c %s "${TARBALL}")
 fi
 
+# Manifest hashes (aae-orc-d3nq.12): binding these into install.meta
+# puts both manifests under the existing signature and attestation
+# transitively, so the documented integrity check verifies against an
+# authenticated record instead of a bare release asset.
+if command -v sha256sum >/dev/null; then
+    FILE_MANIFEST_SHA="$(sha256sum "${OUT_DIR}/file-manifest.csv" | awk '{print $1}')"
+    EXEC_MANIFEST_SHA="$(sha256sum "${OUT_DIR}/exec-manifest.txt" | awk '{print $1}')"
+else
+    FILE_MANIFEST_SHA="$(shasum -a 256 "${OUT_DIR}/file-manifest.csv" | awk '{print $1}')"
+    EXEC_MANIFEST_SHA="$(shasum -a 256 "${OUT_DIR}/exec-manifest.txt" | awk '{print $1}')"
+fi
+
 # 7. install.meta — git-tree provenance (no npm to cite). Field shape
 #    is the aae-orc-bgbm v0.2 draft; schema_version says so honestly.
 PRODUCED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -233,6 +271,8 @@ jq -n \
   --arg tarball "$(basename "${TARBALL}")" \
   --arg tarball_sha256 "${TARBALL_SHA}" \
   --argjson tarball_bytes "${TARBALL_SIZE}" \
+  --arg file_manifest_sha256 "${FILE_MANIFEST_SHA}" \
+  --arg exec_manifest_sha256 "${EXEC_MANIFEST_SHA}" \
   --arg signing_status "${SIGNING_STATUS}" \
   '{
     schema_version: "0.2.0-draft",
@@ -249,6 +289,7 @@ jq -n \
       subtree_path: $subtree,
       subtree_sha: $subtree_sha,
       license: $license,
+      license_file: "LICENSE",
       src_override: $src_override,
       binary_provenance: "wasm hook-plugins from crates/hook-plugins/*, dispatcher binaries from crates/factory-dispatcher, built and committed by upstream release CI at this tag"
     },
@@ -272,7 +313,9 @@ jq -n \
       tarball: $tarball,
       tarball_sha256: $tarball_sha256,
       tarball_bytes: $tarball_bytes,
-      file_count: $file_count
+      file_count: $file_count,
+      file_manifest_sha256: $file_manifest_sha256,
+      exec_manifest_sha256: $exec_manifest_sha256
     },
     signing: { status: $signing_status }
   }' > "${META_JSON}"

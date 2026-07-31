@@ -69,6 +69,14 @@ validated:
     max: 1.0.0-rc.23   # inclusive; single-rung bracket
     release_line: prerelease
     validated_at: "2026-07-31"
+    # Settled tag commit observed at validation time. Binds
+    # "rc.23-validated" to a specific tree: upstream force-moves
+    # release tags by design (release-retags-by-design wrinkle), so
+    # the builder pins signed builds to this SHA when no pin arrives
+    # via env or workflow input (aae-orc-d3nq.11). Meaningful only on
+    # single-rung brackets (min == max); schema field ratification
+    # folds into aae-orc-zb12.
+    upstream_commit: 80e5cd7ba3f72dc36e0823b65ed020146ea733f0
     method: >-
       rc.22 -> rc.23 per-transition diff (56 plugin files classified) +
       mechanical assumption verification against the tag (exec-bit
