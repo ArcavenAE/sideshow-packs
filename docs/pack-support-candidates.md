@@ -12,7 +12,22 @@ candidate below breaks at least one of those assumptions.
 
 ## The candidates
 
-### vsdd-factory (drbothen/vsdd-factory) — external, gitflow, RC-heavy
+### vsdd-factory (drbothen/vsdd-factory) — ONBOARDED 2026-07-31
+
+Graduated to `registry/vsdd-factory-pack-support.yaml` with a validated
+rc.23 bracket (aae-orc-d4cw): direct-tree builder
+(`scripts/build-vsdd-factory.sh`), workflow enum entry, local prototype
+build verified (1190 files, 112 exec bits, tar round-trip). Consumer
+contract ratified: sideshow delivery supersedes the claude-mp
+marketplace binding (no multi-version, no supply-chain verification
+there; the user choosing sideshow changes the terms), and activation is
+per-repo because vsdd-factory is per-repo-operation software — it runs
+in a repo, not from an orchestrator, not across repos. Known quirk
+recorded here for check-support: `sort -V` orders prerelease AFTER
+stable (inverse of semver), so stable and rc versions fall outside each
+other's brackets — the failure direction is conservative (refused, not
+silently accepted). The analysis below is retained as onboarding
+history.
 
 - **Structure:** Rust workspace (the factory binary) + `plugins/vsdd-factory`
   (Claude plugin — the actual content-pack surface) + `.claude/`.

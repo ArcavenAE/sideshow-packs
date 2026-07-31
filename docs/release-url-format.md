@@ -16,7 +16,8 @@ Examples:
 
 - `bmad-v6.3.0`
 - `bmad-v6.5.0` (future)
-- `vsdd-factory-v1.0.0` (future, when added)
+- `vsdd-factory-v1.0.0-rc.23` (prerelease line; rc suffix is part of
+  the semver and survives the tag parse)
 
 The tag triggers `.github/workflows/build-pack.yml` which builds,
 signs, and uploads the release. The workflow parses the tag at
