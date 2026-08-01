@@ -5,7 +5,7 @@
 # captures the produced tree, pre-assembles the sideshow-compatible
 # layout (strip `_bmad/` prefix, unify with `.claude/`), and emits:
 #
-#   artifacts/bmad-<version>-arcaven.tar.gz
+#   artifacts/bmad-<version>[-<revision>]-arcaven.tar.gz
 #   artifacts/install.meta.yaml
 #   artifacts/file-manifest.csv
 #   artifacts/exec-manifest.txt
@@ -28,6 +28,15 @@
 #                    "cis=v0.2.0,gds=v0.6.0" = explicit pin list
 #   OUT_DIR        (default: ./artifacts)
 #   COSIGN         (default: 0)
+#   PACK_REVISION  (default: empty) — packaging re-issue marker (r2,
+#                  r3, ...). Published stable artifacts are immutable;
+#                  a packaging correction (same upstream content,
+#                  fixed packaging layer) ships as a NEW release
+#                  tagged <pack>-v<version>-<revision> with the
+#                  revision in the artifact name and in
+#                  install.meta pack.packaging_revision. Absent =
+#                  first issue (presence-based dispatch, see
+#                  docs/release-url-format.md).
 #   EXPECTED_UPSTREAM_SHA (default: empty) — when set, the build fails
 #                  unless npm's recorded gitHead for
 #                  bmad-method@VERSION equals it, verified BEFORE the
@@ -42,6 +51,11 @@ BMAD_TOOLS="${BMAD_TOOLS:-claude-code}"
 BMAD_PINS="${BMAD_PINS:-auto}"
 OUT_DIR="${OUT_DIR:-$(pwd)/artifacts}"
 COSIGN="${COSIGN:-0}"
+PACK_REVISION="${PACK_REVISION:-}"
+if [[ -n "${PACK_REVISION}" && ! "${PACK_REVISION}" =~ ^r[0-9]+$ ]]; then
+    echo "[build-bmad] FATAL: PACK_REVISION must look like r2, r3, ... (got ${PACK_REVISION})"
+    exit 1
+fi
 
 command -v npx >/dev/null || { echo "error: npx required"; exit 1; }
 command -v yq >/dev/null || { echo "error: yq required (https://github.com/mikefarah/yq)"; exit 1; }
@@ -329,8 +343,12 @@ if [[ "${REQUESTED_PINS_JSON}" != "{}" ]]; then
     echo "[build-bmad] pins verified"
 fi
 
-# 6. Build the tarball (tar from pack stage, gzip).
-TARBALL="${OUT_DIR}/bmad-${BMAD_VERSION}-arcaven.tar.gz"
+# 6. Build the tarball (tar from pack stage, gzip). A packaging
+# re-issue carries its revision in the artifact name so the two
+# issues can never be confused in a download cache; the in-tarball
+# directory stays bmad-<version> (the store keys by pack version, and
+# a reinstall over the same version is the supported upgrade path).
+TARBALL="${OUT_DIR}/bmad-${BMAD_VERSION}${PACK_REVISION:+-${PACK_REVISION}}-arcaven.tar.gz"
 echo "[build-bmad] packaging -> ${TARBALL}"
 tar -C "${WORK}" -czf "${TARBALL}" -s '/pack/bmad-'"${BMAD_VERSION}"'/' pack 2>/dev/null \
     || tar -C "${WORK}" --transform "s|^pack|bmad-${BMAD_VERSION}|" -czf "${TARBALL}" pack
@@ -353,15 +371,18 @@ fi
 # JSON-first avoids YAML quoting/indentation pitfalls when
 # interpolating multi-line module-manifest data.
 #
-# schema_version is 0.1.1, not 0.1.0: the nine published bmad releases
-# (6.3.0 through 6.10.0, measured 2026-08-01) carry no
-# artifact.file_manifest_sha256 / exec_manifest_sha256 (added 5f3d4a4),
-# no schema_stability and no acquisition block. Leaving this at 0.1.0
-# would stamp a second, different shape with the version string those
-# artifacts already use. Additive only, so the bump is a patch and stays
-# within sideshow's exact-minor compatibility rule. Do not revert it to
-# match the published artifacts; they are immutable and their version
-# string is correct for what they contain.
+# schema_version history — one string per published shape, never
+# reused (bump on every field change; do not revert to match published
+# artifacts, they are immutable and their version strings are correct
+# for what they contain):
+#   0.1.0 — the nine original bmad releases (6.3.0 through 6.10.0,
+#           measured 2026-08-01): no artifact.file_manifest_sha256 /
+#           exec_manifest_sha256 (added 5f3d4a4), no schema_stability,
+#           no acquisition block.
+#   0.1.1 — added the manifest hashes, schema_stability, acquisition.
+#   0.1.2 — added optional pack.packaging_revision (re-issue marker;
+#           absent = first issue). Additive only; stays within
+#           sideshow's exact-minor compatibility rule.
 PRODUCED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 META="${OUT_DIR}/install.meta.yaml"
 META_JSON="${OUT_DIR}/install.meta.json"
@@ -390,15 +411,16 @@ jq -n \
   --arg file_manifest_sha256 "${FILE_MANIFEST_SHA}" \
   --arg exec_manifest_sha256 "${EXEC_MANIFEST_SHA}" \
   --arg signing_status "${SIGNING_STATUS}" \
+  --arg packaging_revision "${PACK_REVISION}" \
   '{
-    schema_version: "0.1.1",
+    schema_version: "0.1.2",
     schema_stability: "draft",
-    pack: {
+    pack: ({
       name: "bmad",
       version: $version,
       produced_at: $produced_at,
       produced_by: "sideshow-packs/scripts/build-bmad.sh"
-    },
+    } + (if $packaging_revision == "" then {} else {packaging_revision: $packaging_revision} end)),
     upstream: {
       npm_package: ("bmad-method@" + $version),
       npm_tarball_url: $npm_tarball_url,

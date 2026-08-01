@@ -29,6 +29,10 @@ on:
         description: "Expected upstream commit SHA: build fails unless npm's gitHead matches (set by upstream-intake; empty skips the check)"
         type: string
         default: ""
+      revision:
+        description: "Packaging re-issue marker (r2, r3, ...): same upstream content, corrected packaging; release tag and artifact name carry it (empty = first issue)"
+        type: string
+        default: ""
       sign:
         description: Sign + attest with cosign (OIDC keyless)
         type: boolean
@@ -85,22 +89,38 @@ jobs:
       - name: Determine pack + version
         id: params
         run: |
-          # On tag push, parse "bmad-v6.3.0" → pack=bmad, version=6.3.0
+          # On tag push, parse "bmad-v6.3.0" → pack=bmad, version=6.3.0.
+          # A trailing "-rN" is a packaging re-issue marker, split off
+          # the version ("bmad-v6.10.0-r2" → version=6.10.0 revision=r2;
+          # prerelease versions like 1.0.0-rc.22 are unaffected, the
+          # marker is exactly -r<digits> at the end).
+          REVISION=""
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG="${GITHUB_REF_NAME}"
             PACK="${TAG%%-v*}"
             VERSION="${TAG#*-v}"
+            if [[ "${VERSION}" =~ ^(.+)-(r[0-9]+)$ ]]; then
+              VERSION="${BASH_REMATCH[1]}"
+              REVISION="${BASH_REMATCH[2]}"
+            fi
           else
             PACK="${{ inputs.pack }}"
             VERSION="${{ inputs.version }}"
+            REVISION="${{ inputs.revision }}"
           fi
+          RELEASE_TAG="${PACK}-v${VERSION}${REVISION:+-${REVISION}}"
+          RELEASE_NAME="${PACK} ${VERSION}${REVISION:+ ${REVISION}}"
           echo "pack=${PACK}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "[params] pack=${PACK} version=${VERSION}"
+          echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "release_name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "[params] pack=${PACK} version=${VERSION} revision=${REVISION:-<none>}"
 
       - name: Build pack
         env:
           BMAD_VERSION: ${{ steps.params.outputs.version }}
+          PACK_REVISION: ${{ steps.params.outputs.revision }}
           BMAD_MODULES: ${{ inputs.modules || 'bmm,cis,gds,tea' }}
           BMAD_PINS: ${{ inputs.pins || 'auto' }}
           EXPECTED_UPSTREAM_SHA: ${{ inputs.expected_sha || '' }}
@@ -110,7 +130,11 @@ jobs:
         run: |
           case "${{ steps.params.outputs.pack }}" in
             bmad)         bash scripts/build-bmad.sh ;;
-            vsdd-factory) bash scripts/build-vsdd-factory.sh ;;
+            vsdd-factory)
+              if [[ -n "${PACK_REVISION}" ]]; then
+                echo "revision re-issues are not wired for vsdd-factory yet (build-vsdd-factory.sh does not consume PACK_REVISION)"; exit 1
+              fi
+              bash scripts/build-vsdd-factory.sh ;;
             *)            echo "unknown pack: ${{ steps.params.outputs.pack }}"; exit 1 ;;
           esac
 
@@ -123,7 +147,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: ${{ steps.params.outputs.pack }}-${{ steps.params.outputs.version }}
+          name: ${{ steps.params.outputs.pack }}-${{ steps.params.outputs.version }}${{ steps.params.outputs.revision && format('-{0}', steps.params.outputs.revision) || '' }}
           path: artifacts/
           if-no-files-found: error
 
@@ -131,8 +155,8 @@ jobs:
         if: inputs.publish || github.ref_type == 'tag'
         uses: step-security/action-gh-release@d2093dbdaf0c6507874908247e14bbc4dee6a72d # v3.0.1
         with:
-          name: ${{ steps.params.outputs.pack }} ${{ steps.params.outputs.version }}
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('{0}-v{1}', steps.params.outputs.pack, steps.params.outputs.version) }}
+          name: ${{ steps.params.outputs.release_name }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || steps.params.outputs.release_tag }}
           draft: true
           files: |
             artifacts/*.tar.gz
