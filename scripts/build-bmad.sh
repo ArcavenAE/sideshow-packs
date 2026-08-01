@@ -352,6 +352,16 @@ fi
 # from the JSON via yq -P for human-readable consumption. Building
 # JSON-first avoids YAML quoting/indentation pitfalls when
 # interpolating multi-line module-manifest data.
+#
+# schema_version is 0.1.1, not 0.1.0: the nine published bmad releases
+# (6.3.0 through 6.10.0, measured 2026-08-01) carry no
+# artifact.file_manifest_sha256 / exec_manifest_sha256 (added 5f3d4a4),
+# no schema_stability and no acquisition block. Leaving this at 0.1.0
+# would stamp a second, different shape with the version string those
+# artifacts already use. Additive only, so the bump is a patch and stays
+# within sideshow's exact-minor compatibility rule. Do not revert it to
+# match the published artifacts; they are immutable and their version
+# string is correct for what they contain.
 PRODUCED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 META="${OUT_DIR}/install.meta.yaml"
 META_JSON="${OUT_DIR}/install.meta.json"
@@ -381,7 +391,7 @@ jq -n \
   --arg exec_manifest_sha256 "${EXEC_MANIFEST_SHA}" \
   --arg signing_status "${SIGNING_STATUS}" \
   '{
-    schema_version: "0.1.0",
+    schema_version: "0.1.1",
     schema_stability: "draft",
     pack: {
       name: "bmad",

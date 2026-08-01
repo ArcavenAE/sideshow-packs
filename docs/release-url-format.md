@@ -179,11 +179,49 @@ at the top, and the separation is load-bearing (`aae-orc-d3nq.13`):
 
 Splitting them means adding a field never requires renaming anything
 already published, and a consumer compares a version number rather than
-parsing a `-draft` suffix. Today: bmad emits `0.1.0`, vsdd-factory emits
+parsing a `-draft` suffix. Today: bmad emits `0.1.1`, vsdd-factory emits
 `0.2.0`, both `draft`. The two packs model different upstreams (npm
 composition vs git subtree), so a single ratified shape covering both
 waits on `aae-orc-bgbm`'s multi-backend source types. Bumps follow
 `docs/schema-versioning.md` in the sideshow repo (`aae-orc-xe7l`).
+
+**Bump `schema_version` on every field change.** This is the whole point
+of the unversioned predicate type: bumping is now free, so there is no
+reason to let a version string label two different shapes. bmad's
+`0.1.0` → `0.1.1` bump exists for exactly this reason. `5f3d4a4` added
+`artifact.file_manifest_sha256` and `exec_manifest_sha256` to the bmad
+builder and this change added `schema_stability` and `acquisition`,
+neither moving the version, which would have put a second distinct shape
+under `0.1.0` at the next bmad cut. Nothing published changed; the
+collision was prevented rather than repaired.
+
+### Absent fields in already-published artifacts
+
+Nine bmad releases and one vsdd-factory release were published before
+the fields above existed. They are `release_line: stable` (bmad) or
+already validated against by a pilot (vsdd rc.23), so they stay as they
+are. A consumer resolves them by **probing for fields, never by
+inferring a field set from `schema_version`**:
+
+| Field | Absent means | Consumer behavior |
+|---|---|---|
+| `schema_stability` | predates the split | treat as `draft`; nothing published was ever ratified |
+| `acquisition` | predates the block | infer from `upstream`: `npm_package` present → npm-composition/stable; `subtree_path` present → direct-tree |
+| `artifact.file_manifest_sha256` / `exec_manifest_sha256` | predates `5f3d4a4` | the manifest-hash check is **unavailable**, not failed. Warn; never refuse. Refusing fails all nine published bmad releases |
+
+Two further consequences measured against the published artifacts:
+
+- **Top-level key sets differ by pack, not just by version.** bmad
+  carries `composition` and `install_invocation`; vsdd-factory carries
+  `activation` and `content`. Neither is a version difference. Presence
+  checks are mandatory regardless of how schema versioning evolves.
+- **`schema_version` is not always plain semver in the wild.** vsdd
+  rc.23 published `0.2.0-draft`. A parser must tolerate a prerelease
+  suffix on read even though nothing emits one now. rc.23 is a
+  disposable prerelease line, so this string will not recur.
+
+Measured 2026-08-01 against downloaded `install.meta.json` from
+`bmad-v6.3.0`, `bmad-v6.10.0`, and `vsdd-factory-v1.0.0-rc.23`.
 
 ### Predicate type
 
