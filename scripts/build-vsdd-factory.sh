@@ -249,7 +249,10 @@ else
 fi
 
 # 7. install.meta — git-tree provenance (no npm to cite). Field shape
-#    is the aae-orc-bgbm v0.2 draft; schema_version says so honestly.
+#    is the aae-orc-bgbm v0.2 draft. schema_version names the shape;
+#    schema_stability says whether we promise it (aae-orc-d3nq.13).
+#    The two are separate so adding a field never forces a rename of
+#    anything already published.
 PRODUCED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 META="${OUT_DIR}/install.meta.yaml"
 META_JSON="${OUT_DIR}/install.meta.json"
@@ -276,7 +279,8 @@ jq -n \
   --arg exec_manifest_sha256 "${EXEC_MANIFEST_SHA}" \
   --arg signing_status "${SIGNING_STATUS}" \
   '{
-    schema_version: "0.2.0-draft",
+    schema_version: "0.2.0",
+    schema_stability: "draft",
     pack: {
       name: "vsdd-factory",
       version: $version,
@@ -370,10 +374,18 @@ if [[ "${COSIGN}" == "1" ]]; then
         --bundle "${META}.bundle" \
         --output-signature "${META}.sig" \
         "${META}"
+    # The predicate type identifies the KIND of document, not its shape,
+    # so it carries no version (aae-orc-d3nq.13). Versioning it would put
+    # a string that published artifacts freeze in lockstep with a schema
+    # that is still growing fields; the version lives in-band instead,
+    # read after verification. Departs from the SLSA convention
+    # (slsa.dev/provenance/v1) deliberately: the signature and CI
+    # identity are the trust anchor either way, and nothing routes on
+    # --type before decoding the payload.
     echo "[build-vsdd] cosign attest-blob (sideshow install-meta predicate)"
     cosign attest-blob --yes \
         --predicate "${META_JSON}" \
-        --type "https://arcaven.com/sideshow/install-meta/v0.1.0" \
+        --type "https://arcaven.com/sideshow/install-meta" \
         --bundle "${TARBALL}.attest.bundle" \
         "${TARBALL}"
 else

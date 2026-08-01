@@ -46,7 +46,7 @@ For pack `<pack>` at version `<v>`:
 | `<pack>-<v>-arcaven.tar.gz` | The pack tree in sideshow's user-install layout (pack content at root, `.claude/` as sibling) |
 | `<pack>-<v>-arcaven.tar.gz.sig` | cosign detached signature over the tarball (raw signature bytes) |
 | `<pack>-<v>-arcaven.tar.gz.bundle` | cosign signing bundle: signature + Sigstore Rekor log entry + cert chain (single-file verifiable bundle) |
-| `<pack>-<v>-arcaven.tar.gz.attest.bundle` | cosign attestation bundle: in-toto attestation (predicate-type `https://arcaven.com/sideshow/install-meta/v0.1.0`) signed via Sigstore |
+| `<pack>-<v>-arcaven.tar.gz.attest.bundle` | cosign attestation bundle: in-toto attestation (predicate-type `https://arcaven.com/sideshow/install-meta`, unversioned; releases before 2026-08-01 use `.../install-meta/v0.1.0`) signed via Sigstore |
 | `install.meta.yaml` | Human-readable provenance (upstream npm + git + composition + invocation) |
 | `install.meta.json` | Machine-readable predicate (same shape as YAML, no comments) |
 | `install.meta.yaml.sig` / `install.meta.yaml.bundle` | cosign sig + bundle for the YAML |
@@ -90,6 +90,9 @@ cosign verify-blob \
   bmad-6.3.0-arcaven.tar.gz
 
 # 2. Verify the attestation (provenance predicate)
+#    --type is "https://arcaven.com/sideshow/install-meta" for releases
+#    cut on or after 2026-08-01. This example targets bmad 6.3.0, which
+#    predates the change, so it uses the old versioned URI.
 cosign verify-blob-attestation \
   --bundle bmad-6.3.0-arcaven.tar.gz.attest.bundle \
   --certificate-identity-regexp "https://github.com/ArcavenAE/sideshow-packs/.github/workflows/.*" \
@@ -100,6 +103,9 @@ cosign verify-blob-attestation \
 # 3. Extract install.meta FROM the verified attestation payload
 jq -r '.dsseEnvelope.payload' bmad-6.3.0-arcaven.tar.gz.attest.bundle \
   | base64 -d | jq '.predicate' > install.meta.verified.json
+
+# 3b. Read the shape AFTER verification, never from the URI
+jq -r '.schema_version, .schema_stability' install.meta.verified.json
 
 # 4. Check the downloaded manifests against the attested hashes
 jq -r '.artifact.file_manifest_sha256' install.meta.verified.json
@@ -148,16 +154,57 @@ build defect like the missing-signing-on-tag-trigger bug fixed in
 5. `git tag -s <tag> -m "..."` — re-sign the tag at the fix commit
 6. `git push origin <tag>` — triggers a fresh signed build
 
-Re-cuts are reversible only while the release is still draft. Once a
-release is published (out of draft state), treat the artifacts as
-immutable; defects are corrected via overlay artifacts (`aae-orc-10vq`)
-or a new minor version, not by re-cutting.
+Re-cuts are reversible only while the release is still draft.
+
+Beyond draft, immutability is scoped by `acquisition.release_line` in
+the artifact's own `install.meta`, not by GitHub's draft flag alone:
+
+- `release_line: stable` — published artifacts are immutable. Defects
+  are corrected via overlay artifacts (`aae-orc-10vq`) or a new minor
+  version, never by re-cutting.
+- `release_line: prerelease` — the line is disposable. A prerelease tag
+  may be deleted and re-cut, and consumers are told not to pin to it.
+  Prerelease tags must also carry GitHub's prerelease flag so the two
+  records agree.
 
 ## Schema versioning
 
-`install.meta.yaml` and `install.meta.json` declare `schema_version`
-at the top. Today's schema is `0.1.0`. Future bumps follow
+`install.meta.yaml` and `install.meta.json` declare two separate things
+at the top, and the separation is load-bearing (`aae-orc-d3nq.13`):
+
+| Field | Answers | Changes when |
+|---|---|---|
+| `schema_version` | which shape is this | any field is added, removed, or retyped |
+| `schema_stability` | do we promise it | the shape is ratified (`draft` → `stable`) |
+
+Splitting them means adding a field never requires renaming anything
+already published, and a consumer compares a version number rather than
+parsing a `-draft` suffix. Today: bmad emits `0.1.0`, vsdd-factory emits
+`0.2.0`, both `draft`. The two packs model different upstreams (npm
+composition vs git subtree), so a single ratified shape covering both
+waits on `aae-orc-bgbm`'s multi-backend source types. Bumps follow
 `docs/schema-versioning.md` in the sideshow repo (`aae-orc-xe7l`).
+
+### Predicate type
+
+The cosign attestation predicate type is
+`https://arcaven.com/sideshow/install-meta`, with **no version segment**.
+It identifies the kind of document; the shape is `schema_version`,
+in-band, read after verification.
+
+This departs from the SLSA convention (`slsa.dev/provenance/v1`)
+deliberately. Encoding the schema version in the URI couples a string
+that published artifacts freeze to a schema that is still growing
+fields, which turns every field addition into a coordinated rename with
+a permanent consumer special case. It buys no security property: the
+signature and CI identity are the trust anchor either way, and nothing
+here routes on `--type` before decoding the payload.
+
+Releases cut before 2026-08-01 (bmad 6.3.0 through 6.10.0, and
+vsdd-factory 1.0.0-rc.23) attest under the old
+`.../install-meta/v0.1.0`. They are published and stay as they are. A
+verifier accepts both URIs; that two-entry list was already required by
+the 0.1.0 / 0.2.x split across the two packs.
 
 ## Related
 

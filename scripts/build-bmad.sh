@@ -382,6 +382,7 @@ jq -n \
   --arg signing_status "${SIGNING_STATUS}" \
   '{
     schema_version: "0.1.0",
+    schema_stability: "draft",
     pack: {
       name: "bmad",
       version: $version,
@@ -413,6 +414,10 @@ jq -n \
         "--output-folder _bmad-output",
         "--yes"
       ]
+    },
+    acquisition: {
+      method: "npm-composition",
+      release_line: "stable"
     },
     artifact: {
       tarball: $tarball,
@@ -472,10 +477,15 @@ if [[ "${COSIGN}" == "1" ]]; then
     # tree: upstream npm + git + composition + invocation). The
     # actions/attest-build-provenance step (separate) emits the
     # canonical SLSA provenance from GitHub's perspective.
+    #
+    # The URI carries no version: it identifies the KIND of document,
+    # not its shape (aae-orc-d3nq.13). schema_version travels in-band
+    # and is read after verification. Releases cut before 2026-08-01
+    # attest under .../install-meta/v0.1.0; a verifier accepts both.
     echo "[build-bmad] cosign attest-blob (sideshow install-meta predicate)"
     cosign attest-blob --yes \
         --predicate "${META_JSON}" \
-        --type "https://arcaven.com/sideshow/install-meta/v0.1.0" \
+        --type "https://arcaven.com/sideshow/install-meta" \
         --bundle "${TARBALL}.attest.bundle" \
         "${TARBALL}"
 else
