@@ -36,6 +36,30 @@ upstream:
     gds: https://github.com/bmad-code-org/bmad-module-game-dev-studio
     tea: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
 
+# Preserve contract (aae-orc-d3nq.42). Authoritative never-remove
+# declaration for this pack; sideshow also compiles a conservative floor
+# (internal/preserve) covering the class-1 shapes, so removal stays safe
+# with no register on hand. The register can only widen protection.
+#
+# bmad has no factory worktree and no git-ref surface, so its class 1 is
+# just the customization and output trees. Declared anyway rather than
+# omitted: an absent section reads as "not yet considered", and the two
+# packs' contracts should be comparable at a glance.
+preserve:
+  class_1_durable:
+    paths:
+      - _bmad-custom/               # incl. config.user.toml, the personal layer
+      - _bmad-output/
+    git_refs: []                    # bmad owns no refs
+  class_2_regenerable:
+    paths:
+      - .claude/skills/ bindings (re-derived by commands sync)
+      - bound-variant cache (<data-dir>/bound/<pack>/<version>/)
+  class_3_harness_config:
+    keys:
+      - permission entries written by install
+      - default agent
+
 # What "supported" means: every validated bracket was verified against
 # ALL of these assumptions. A new version is unsupported until an
 # agent/human re-verifies them (see llm_runbook) and extends a bracket.
