@@ -142,7 +142,28 @@ validated:
       - skippy/arcavenai rc.22 prototype-bundle validation (aae-orc#54);
         structural conclusions transfer to rc.23 (tree shape unchanged)
 # rc.22 remains packageable best-effort via ALLOW_UNSUPPORTED; it was
-# never run through the build pipeline, so it carries no bracket.
+# never run through the full revalidation ladder, so it carries no
+# validated bracket. Entries below record best-effort cuts so the pin
+# and the purpose survive; check-support reads validated[] only and
+# still refuses these without ALLOW_UNSUPPORTED=1.
+packaged_unsupported:
+  - version: 1.0.0-rc.22
+    upstream_commit: a04cb3034118d5761a24e47247dc62f483fee85f
+    packaged_at: "2026-08-01"
+    purpose: >-
+      critic side-by-side comparison of rc.22 vs rc.24 for the capstone
+      presentation. rc.22 is the rung skippy's prototype validation
+      exercised (aae-orc#54); packaging it preserves that baseline as a
+      runnable artifact. The tag has pointed at this commit since
+      2026-07-03, which predates the validation window, and plugin
+      content is measured frozen rc.20 through rc.22, so the pinned
+      tree is the validated content.
+    evidence:
+      - >-
+        local best-effort build 2026-08-01: exec census 106, six
+        platform templates, bookkeeping absent, 1178-file manifest,
+        tar round-trip bytes + modes OK
+      - aae-orc#54 (skippy rc.22 prototype-bundle validation)
 # Skippy's rc.22 findings retained in the wrinkles + aae-orc#54:
 # raw-tree capture == plugin-installer output minus 2 per-machine
 # bookkeeping files; per-repo enable/disable real and atomic;
