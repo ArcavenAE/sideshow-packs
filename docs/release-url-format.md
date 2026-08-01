@@ -9,7 +9,7 @@ fetch URLs.
 Each release is anchored to a git tag:
 
 ```
-<pack>-v<semver>
+<pack>-v<semver>[-r<N>]
 ```
 
 Examples:
@@ -18,6 +18,16 @@ Examples:
 - `bmad-v6.5.0` (future)
 - `vsdd-factory-v1.0.0-rc.23` (prerelease line; rc suffix is part of
   the semver and survives the tag parse)
+- `bmad-v6.10.0-r2` (packaging re-issue; see below)
+
+A trailing `-r<N>` is a **packaging revision**: the same upstream
+content rebuilt because the packaging layer itself was wrong (first
+case: releases cut 2026-07-12 predate the `runtime_links` emit in
+pack.yaml, sideshow#109). The revision rides the tag, the artifact
+name (`bmad-6.10.0-r2-arcaven.tar.gz`), and
+`install.meta pack.packaging_revision`. Absent revision means first
+issue, per the absent-field discipline. `r<digits>` at the end of the
+tag is unambiguous against prerelease semver (`-rc.N` carries a dot).
 
 The tag triggers `.github/workflows/build-pack.yml` which builds,
 signs, and uploads the release. The workflow parses the tag at
@@ -160,8 +170,9 @@ Beyond draft, immutability is scoped by `acquisition.release_line` in
 the artifact's own `install.meta`, not by GitHub's draft flag alone:
 
 - `release_line: stable` — published artifacts are immutable. Defects
-  are corrected via overlay artifacts (`aae-orc-10vq`) or a new minor
-  version, never by re-cutting.
+  are corrected via overlay artifacts (`aae-orc-10vq`), a new minor
+  version, or a packaging revision (`-r<N>` tag, new release beside
+  the immutable original) — never by mutating a published asset.
 - `release_line: prerelease` — the line is disposable. A prerelease tag
   may be deleted and re-cut, and consumers are told not to pin to it.
   Prerelease tags must also carry GitHub's prerelease flag so the two
