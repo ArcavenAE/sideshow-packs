@@ -23,6 +23,54 @@ version_scheme: semver-releases
 release_line: prerelease         # active line is v1.0.0-rc.N; stable line
                                  # dormant at v0.79.4 (2026-04-24)
 
+# Preserve contract (aae-orc-d3nq.42). This register is AUTHORITATIVE:
+# it is where the never-remove declaration lives for this pack. Sideshow
+# also compiles a conservative floor (internal/preserve) covering the
+# class-1 shapes below, so removal stays safe on a machine that has the
+# binary and a ledger but no register on hand. Where the two disagree,
+# the register can only ever widen protection, never narrow it.
+#
+# Per drbothen/vsdd-factory#413 this class-1 corpus doubles as the data
+# model for the future service, so the list is a product contract rather
+# than housekeeping.
+preserve:
+  # Class 1 — durable user state. Never written, deleted, or cleaned by
+  # any sideshow verb, through install, uninstall, version flips, and
+  # conversion in either direction.
+  class_1_durable:
+    paths:
+      - .factory/                   # running factory worktree + run state
+      - .factory-project/
+      - .worktrees/                 # STORY-* wave checkouts
+      - _vsdd-factory-custom/       # customization, checked-in territory
+      - _vsdd-factory-output/       # generated output the user owns
+      - STATE.md
+      - wave-state.yaml
+      - HANDOFF.md
+    git_refs:
+      # Not a path list: a ref is not something a containment predicate
+      # can see. Protection is verb behavior — sideshow runs no
+      # destructive git subcommand at all (guarded by a test in
+      # internal/preserve; measured usage is rev-parse and status only).
+      - factory-artifacts           # branch AND its remote
+      - "feature/STORY-*"
+      - "refs/**"                   # nothing under .git is sideshow's
+
+  # Class 2 — regenerable machine state. Droppable and re-derivable;
+  # removal is expected and is not a defect.
+  class_2_regenerable:
+    paths:
+      - rendered hooks.json
+      - bound-variant cache (<data-dir>/bound/<pack>/<version>/)
+
+  # Class 3 — harness config. Touched only per an explicit settings
+  # allowlist, with consent.
+  class_3_harness_config:
+    keys:
+      - enabledPlugins entries
+      - default agent
+      - activation block
+
 acquisition:
   method: direct-tree            # no upstream installer for content;
                                  # capture plugins/vsdd-factory at tag.
