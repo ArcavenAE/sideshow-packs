@@ -14,8 +14,9 @@
 # is per-repo-operation software — it runs IN a repo, never from an
 # orchestrator or across repos. Content may install to the user-scope
 # store multi-version like bmad, but activation is per repo, and
-# sideshow delivery supersedes the claude-mp marketplace binding by
-# the user's choice of sideshow.
+# sideshow delivery is the repo-bindings channel (unshaping): the
+# claude plugin is upstream source format, and machine-level
+# coexistence with a claude-mp install is supported.
 #
 # Emits (mirroring build-bmad.sh):
 #   artifacts/vsdd-factory-<version>-arcaven.tar.gz
@@ -176,21 +177,21 @@ name: vsdd-factory
 version: ${VSDD_VERSION}
 schema_version: 0.1.0
 
-# Ratified 2026-07-31 (aae-orc-d4cw): vsdd-factory is per-repo-operation
-# software. It runs IN a repo; it is not designed to run from an
-# orchestrator or across repos. Multi-version store install is fine;
-# activation is per repo, managed by sideshow. Sideshow delivery
-# supersedes the claude-mp marketplace binding: the marketplace offers
-# neither multi-version install nor supply-chain verification, and a
-# user selecting sideshow changes the consumer contract by that choice.
-# Enforcement: sideshow Binding abstraction (aae-orc-f13j); until it
-# lands, per-repo enablement is a documented manual step; the runbook
-# below is the contract (verified on Claude Code 2.1.220, finding-091).
+# Ratified 2026-07-31 (aae-orc-d4cw + finding-094): vsdd-factory is
+# per-repo-operation software. It runs IN a repo; it is not designed
+# to run from an orchestrator or across repos. Multi-version store
+# install is fine; activation is per repo via the repo-bindings
+# mechanism (unshaping): sideshow enable materializes the discovery
+# surface into one named repo and store-references the engine; no
+# harness plugin state is written. Bound artifacts carry the vsdd-
+# prefix. The runbook below is the consumer contract (verified on
+# Claude Code 2.1.220, finding-091).
 activation:
   default_scope: per-repo
   per_repo_required: true
-  mechanism: claude-plugin
-  runbook: https://github.com/ArcavenAE/sideshow/blob/main/docs/claude-plugin-enablement.md
+  mechanism: repo-bindings
+  binding_prefix: vsdd
+  runbook: https://github.com/ArcavenAE/sideshow/blob/main/docs/repo-bindings-enablement.md
   validated_harness_floor: "claude-code 2.1.220"
 YAML
 
@@ -307,7 +308,8 @@ jq -n \
     activation: {
       default_scope: "per-repo",
       per_repo_required: true,
-      mechanism: "claude-plugin"
+      mechanism: "repo-bindings",
+      binding_prefix: "vsdd"
     },
     artifact: {
       tarball: $tarball,
@@ -325,7 +327,8 @@ yq -p json -o yaml "${META_JSON}" > "${META}"
     cat <<HEADER
 # Frozen direct-tree artifact provenance — vsdd-factory@${VSDD_VERSION}
 # Produced by sideshow-packs build-vsdd-factory.sh.
-# Consumed by sideshow install (verifies signatures + provenance).
+# Intended for verification by sideshow install; not yet implemented
+# (aae-orc-wk92); verify manually with cosign until then.
 
 HEADER
     cat "${META}"

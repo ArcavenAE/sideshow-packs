@@ -437,7 +437,8 @@ yq -p json -o yaml "${META_JSON}" > "${META}"
     cat <<HEADER
 # Frozen-composition artifact provenance — bmad@${BMAD_VERSION}
 # Produced by sideshow-packs build-bmad.sh.
-# Consumed by sideshow install (verifies signatures + provenance).
+# Intended for verification by sideshow install; not yet implemented
+# (aae-orc-wk92); verify manually with cosign until then.
 
 HEADER
     cat "${META}"
