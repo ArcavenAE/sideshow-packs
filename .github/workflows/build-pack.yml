@@ -14,9 +14,9 @@ on:
         required: true
         default: "6.3.0"
       modules:
-        description: "Module composition (comma-separated codes; core is always included)"
+        description: "Module composition override (comma-separated codes; core is always included). Leave EMPTY to use the pack register's default_modules, which is what tag-push builds use — an input default here would silently diverge dispatch builds from published ones."
         type: string
-        default: "bmm,cis,gds,tea"
+        default: ""
       pins:
         description: "External-module pins: auto (as-of-release-date), none, or cis=v0.2.0,gds=v0.4.0,..."
         type: string
