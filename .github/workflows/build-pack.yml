@@ -115,13 +115,28 @@ jobs:
           echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
           echo "release_tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
           echo "release_name=${RELEASE_NAME}" >> "$GITHUB_OUTPUT"
-          echo "[params] pack=${PACK} version=${VERSION} revision=${REVISION:-<none>}"
+
+          # Composition default comes from the register, never a literal in
+          # this file: the tag-push path supplies no inputs, so a literal here
+          # is unoverridable and silently decides what ships (sideshow-packs#20).
+          # Absent key -> empty -> build-<pack>.sh applies its own default.
+          REG="registry/${PACK}-pack-support.yaml"
+          DEFAULT_MODULES=""
+          if [[ -f "${REG}" ]]; then
+            DEFAULT_MODULES="$(yq -r '.default_modules // ""' "${REG}")"
+          fi
+          echo "default_modules=${DEFAULT_MODULES}" >> "$GITHUB_OUTPUT"
+          echo "[params] pack=${PACK} version=${VERSION} revision=${REVISION:-<none>} default_modules=${DEFAULT_MODULES:-<none>}"
 
       - name: Build pack
         env:
           BMAD_VERSION: ${{ steps.params.outputs.version }}
           PACK_REVISION: ${{ steps.params.outputs.revision }}
-          BMAD_MODULES: ${{ inputs.modules || 'bmm,cis,gds,tea' }}
+          # Composition source of truth is the register's default_modules for
+          # this pack; the tag-push path carries no inputs, so a literal default
+          # here silently narrowed every -rN re-issue (sideshow-packs#20). Read
+          # it from the register instead, and let a dispatch input override.
+          BMAD_MODULES: ${{ inputs.modules || steps.params.outputs.default_modules }}
           BMAD_PINS: ${{ inputs.pins || 'auto' }}
           EXPECTED_UPSTREAM_SHA: ${{ inputs.expected_sha || '' }}
           VSDD_VERSION: ${{ steps.params.outputs.version }}
