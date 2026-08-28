@@ -118,6 +118,23 @@ pipeline_assumptions:
     desc: Claude Code >= 2.1.105 (advisory check-harness-version.sh, PreCompact, never blocks)
 
 validated:
+  - min: 1.0.0-rc.24
+    max: 1.0.0-rc.24   # inclusive; single-rung bracket
+    release_line: prerelease
+    validated_at: "2026-08-28"
+    upstream_commit: 89f6f87cf476b1f57d979962eabf0d9b20a49e69
+    method: >-
+      rc.23 -> rc.24 compare via the GitHub compare and tree APIs (56 commits,
+      261 files) with a mechanical assumption sweep at the rc.24 commit, then
+      a pipeline test build (run 33212381315, sign=false publish=false) and
+      artifact verification via scripts/verify-artifact.sh. No local mirror was
+      taken; third-party content stayed in quarantine.
+    evidence:
+      - run 33212381315 (test build, success)
+      - "verify-artifact.sh: 1275 files, +85 (7%) vs rc.23, within band; pack.yaml version coherent"
+      - "exec-manifest.txt: 117 executables, matching the pre-build tree census exactly"
+      - all five pipeline_assumptions verified; exec-bit delta additive, zero removals
+
   - min: 1.0.0-rc.23
     max: 1.0.0-rc.23   # inclusive; single-rung bracket
     release_line: prerelease
@@ -329,55 +346,3 @@ wrinkles:
       - compare v1.0.0-rc.22...v1.0.0-rc.23 plugin_files=56 (2026-07-31, aae-orc-d4cw.1)
 
 llm_runbook: registry/pack-support-revalidation-runbook.md
-
-# Revalidation in flight (runbook: registry/pack-support-revalidation-runbook.md).
-revalidation_in_progress:
-  - version: 1.0.0-rc.24
-    upstream_tag_object: 2f97d5e91b2c70da97c5a0156770b577f5e22416
-    upstream_commit: 89f6f87cf476b1f57d979962eabf0d9b20a49e69
-    step_1_source_verification: complete
-    step_1_at: "2026-08-28"
-    step_1_method: >-
-      rc.23..rc.24 compare via the GitHub API (56 commits, 261 files) plus a
-      mechanical tree census at the rc.24 commit. No local mirror was taken;
-      third-party content stays in quarantine per the ae discipline.
-    step_1_result: >-
-      All five pipeline_assumptions hold. plugin-dir-exists: 2072 paths under
-      plugins/vsdd-factory. plugin-manifest-shape:
-      plugins/vsdd-factory/.claude-plugin/plugin.json present.
-      no-build-required: prebuilt dispatcher binaries still ship in-tree under
-      plugins/vsdd-factory/bin/ (mode 100755). exec-bits-preserved: census is
-      117, up from the 112 baseline — five ADDED, zero removed. harness-floor:
-      advisory only, unchanged.
-    exec_bit_delta:
-      baseline_rc23: 112
-      observed_rc24: 117
-      added:
-        - plugins/vsdd-factory/hook-plugins/validate-cross-site-correspondence.wasm
-        - plugins/vsdd-factory/hook-plugins/validate-factory-path-staging.wasm
-        - plugins/vsdd-factory/hook-plugins/verify-state-timestamp-advisory.wasm
-        - plugins/vsdd-factory/tests/fixtures/pr-manager-trunk/gh
-        - plugins/vsdd-factory/tests/fixtures/pr-manager-trunk/git
-      removed: []
-      required_adaptation: none
-      adaptation_note: >-
-        No change needed, and the reason is worth recording because the prose
-        invites the opposite conclusion. build-vsdd-factory.sh derives
-        EXPECTED_EXEC from the tag's own tree at build time (line ~141,
-        git ls-tree | awk '$1=="100755"' | wc -l) and compares it to the staged
-        count. "Fails on drift" means tag-vs-stage disagreement, not
-        disagreement with a stored constant, so the gate self-adjusts to 117.
-        The 112 in the surrounding comment is a rc.23 observation, not a
-        threshold. Purely additive with no removals is the clean signal; a
-        removal would have warranted checking whether content was dropped.
-    step_2_test_build: NOT RUN
-    step_3_artifact_verification: NOT RUN
-    blocker: >-
-      Build dispatch requires admin on ArcavenAE/sideshow-packs; the identity
-      available at analysis time (arcavenai) has pull-only access and received
-      HTTP 403 on workflow_dispatch.
-    do_not: >-
-      Do not extend the validated bracket on Step 1 alone, and do not assume
-      the rc.24 tag is stable: the release-retags-by-design wrinkle means
-      upstream force-moves release tags, so a signed build must pin the commit
-      recorded above rather than resolve the tag at build time.
