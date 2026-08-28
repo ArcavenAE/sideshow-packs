@@ -136,7 +136,12 @@ P_LICENSE="$(jq -r '.license // empty' "${PLUGIN_JSON}")"
 echo "[build-vsdd] plugin manifest OK (name=${P_NAME} version=${P_VERSION} license=${P_LICENSE:-unspecified})"
 
 # exec-bits-preserved: staged executable count must equal the tag's
-# 100755 count for the subtree. 112 at rc.23; drift means broken
+# 100755 count for the subtree. Both sides are computed from the tag at
+# build time, so this gate self-adjusts as upstream adds or removes
+# executables; it asks "did capture preserve the bits", not "does the
+# count match a stored number". Observed counts, for orientation only:
+# 112 at rc.23, 117 at rc.24 (+3 wasm hook-plugins, +2 test fixtures).
+# Drift means broken
 # hooks/binaries at install time.
 EXPECTED_EXEC="$(git -C "${WORK}/src" ls-tree -r HEAD "${SUBTREE}" | awk '$1=="100755"' | wc -l | tr -d ' ')"
 ACTUAL_EXEC="$(find "${PACK_STAGE}" -type f -perm -0100 | wc -l | tr -d ' ')"
