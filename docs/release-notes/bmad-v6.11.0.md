@@ -4,8 +4,9 @@ Attach as the body of the `bmad-v6.11.0` draft release. The pipeline creates
 releases as drafts with no body (`build-pack.yml`, `action-gh-release`), so
 this text is authored, not generated.
 
-Two values must be filled from the built artifact before publishing; they are
-marked `<fill>` below and are the only placeholders in this file.
+Ready to attach as-is. Figures below come from the verified test build (run
+33212739383); the signed release rebuilds the same tree, so confirm they match
+before publishing.
 
 ---
 
@@ -23,7 +24,21 @@ to ship without `bmb` and `wds` while its notes claimed identical content
 beside the support bracket that validated it.
 
 External modules are pinned as-of the upstream release date; the exact
-versions and commit shas are recorded in `install.meta.yaml`.
+versions and commit shas are recorded in `install.meta.yaml`. As built and
+verified:
+
+| module | version | source |
+|---|---|---|
+| core | 6.11.0 | built-in |
+| bmm | 6.11.0 | built-in |
+| cis | v0.2.1 | external |
+| gds | v0.6.0 | external |
+| tea | v1.21.10 | external |
+| bmb | v2.1.0 | external |
+| wds | v0.4.3 | external |
+
+The file census is 2024 files, +43 (2%) against 6.10.0 — consistent with a
+release that removes several skills and adds the `render/` snapshot tree.
 
 ## Verify
 
@@ -37,7 +52,7 @@ cosign verify-blob \
 
 `install.meta.yaml` is signed separately and carries the full source chain:
 upstream git sha, npm tarball digests, and the resolved version of every
-external module. `file-manifest.csv` lists `<fill: file count>` files with
+external module. `file-manifest.csv` lists **2024** files with
 per-file digests.
 
 ## Before you upgrade
@@ -153,6 +168,10 @@ before treating this artifact as bracket-validated.
 
 ## Artifact digest
 
-```
-sha256  <fill: from file-manifest.csv / the release asset>
+The published tarball's `sha256` is recorded in the release assets and in the
+signed `install.meta`. Verify against those rather than a digest transcribed
+into prose — a hash copied by hand is a hash nobody checked.
+
+```sh
+shasum -a 256 bmad-6.11.0-arcaven.tar.gz
 ```

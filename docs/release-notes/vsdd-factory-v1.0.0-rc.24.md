@@ -4,8 +4,9 @@ Attach as the body of the `vsdd-factory-v1.0.0-rc.24` draft release. The
 pipeline creates releases as drafts with no body, so this text is authored,
 not generated.
 
-One value must be filled from the built artifact before publishing, marked
-`<fill>` below.
+Ready to attach as-is. The file count below is from the verified test build
+(run 33212381315); the signed release rebuilds the same tree, so confirm it
+matches before publishing.
 
 ---
 
@@ -36,7 +37,7 @@ cosign verify-blob \
 ```
 
 `exec-manifest.txt` carries the executable-bit census, and
-`file-manifest.csv` lists `<fill: file count>` files with per-file digests.
+`file-manifest.csv` lists **1275** files with per-file digests.
 
 ## What changed since rc.23
 
@@ -98,6 +99,10 @@ before treating this artifact as bracket-validated.
 
 ## Artifact digest
 
-```
-sha256  <fill: from the release asset>
+The published tarball's own `sha256` is recorded in the release assets and in
+the signed `install.meta`. Verify against those rather than against any digest
+transcribed into prose — a hash copied by hand is a hash nobody checked.
+
+```sh
+shasum -a 256 vsdd-factory-1.0.0-rc.24-arcaven.tar.gz
 ```
