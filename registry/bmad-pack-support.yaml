@@ -24,6 +24,15 @@ kind: pack-support
 schema_version: 0.1.0
 pack: bmad
 
+# Composition this pack ships, and the single source of truth for it.
+# Consumed by build-pack.yml's params step. Previously a literal default
+# inside the workflow, which the tag-push path could not override — so the
+# 2026-08-01 -r2 batch silently shipped without bmb + wds while its release
+# notes asserted "same upstream content" (sideshow-packs#20). Composition is
+# a property of the pack, so it is declared here beside the support bracket
+# that validated it.
+default_modules: bmm,cis,gds,tea,bmb,wds
+
 upstream:
   repo: https://github.com/bmad-code-org/BMAD-METHOD
   npm_package: bmad-method
@@ -230,6 +239,152 @@ wrinkles:
     adaptation: none needed; noted so log-watchers don't false-alarm.
     references:
       - upstream commit 02739932 / PR #2495
+
+  # ---- 6.11.0 (Step 1 of the revalidation runbook; bracket NOT yet
+  # extended — Steps 2/3, the test build and artifact verification, have
+  # not run. See revalidation_in_progress below.) ----
+
+  - id: render-dir-under-bmad
+    introduced_in: 6.11.0
+    resolved_in: null
+    severity: adaptation-not-needed
+    summary: >-
+      Skills render through _bmad/scripts/render_skill.py into a new
+      content-addressed snapshot tree at _bmad/render/, each generation
+      carrying manifest.json with renderer/source hashes. manifest-generator
+      excludes the name 'render' from module enumeration so the snapshot dir
+      is not mistaken for a module.
+    adaptation: >-
+      None. Output still lands under _bmad/ (bmad-output-dir holds) and the
+      module list shape is unchanged (manifest-shape holds). Recorded because
+      file_count and file-manifest.csv will grow by the snapshot tree, which
+      would otherwise read as unexplained drift in a parity comparison.
+    references:
+      - upstream #2601, #2657
+      - tools/installer/core/manifest-generator.js (render exclusion)
+
+  - id: git-env-sanitization
+    introduced_in: 6.11.0
+    resolved_in: null
+    severity: adaptation-not-needed
+    summary: >-
+      New tools/installer/modules/git-env.js strips repo-targeting variables
+      (GIT_DIR, GIT_WORK_TREE, GIT_CONFIG_PARAMETERS, the enumerated
+      GIT_CONFIG_KEY_n form, and siblings) from the environment of every git
+      subprocess used for external-module cache clone/fetch/checkout.
+    adaptation: >-
+      None needed, and it removes a latent hazard for us: our builds clone
+      external modules inside CI, where an inherited GIT_DIR would have
+      retargeted those operations. Pin/tag fetch mechanics are otherwise
+      unchanged, so module-set holds.
+    references:
+      - tools/installer/modules/external-manager.js (all execSync calls now pass gitEnv())
+
+  - id: uv-hard-requirement-rendered-skills
+    introduced_in: 6.11.0
+    resolved_in: null
+    severity: consumer-environment
+    summary: >-
+      uv with Python 3.11+ becomes a hard requirement for rendered skills:
+      bmad-build and bmad-build-auto halt outright when uv is unavailable
+      (no interpreter fallback). The installer's own uv-check.js is
+      explicitly warn-don't-block, so packaging is unaffected.
+    adaptation: >-
+      No packaging change; the CI runner needs no uv to BUILD the pack. This
+      is a consumer-side prerequisite and belongs in the release notes:
+      installing the pack does not install uv, and the failure surfaces later,
+      at skill-run time, not at install.
+    references:
+      - upstream #2281, #2601
+      - tools/installer/core/uv-check.js
+
+  - id: platform-antigravity-cli
+    introduced_in: 6.11.0
+    resolved_in: null
+    severity: adaptation-not-needed
+    summary: >-
+      New installer target 'antigravity-cli' (.agents/skills, global
+      ~/.gemini/antigravity-cli/skills), distinct from the Antigravity IDE
+      entry so the two cannot collide.
+    adaptation: None. We build with --tools claude-code; claude-sibling holds.
+    references:
+      - upstream #2551
+      - tools/installer/ide/platform-codes.yaml
+
+  - id: skill-catalog-consolidation-v6-shims
+    introduced_in: 6.11.0
+    resolved_in: null
+    severity: consumer-migration
+    summary: >-
+      Large catalog reduction. Core drops fourteen skills to eight: the three
+      review skills plus two editorial skills become lenses on one
+      bmad-review; three research skills become bmad-deep-recon;
+      bmad-document-project + bmad-generate-project-context become
+      bmad-project-context. bmad-quick-dev -> bmad-build, bmad-dev-auto ->
+      bmad-build-auto. Retired IDs forward through v6-shims/ until the v7 cut.
+      bmad-agent-tech-writer (Paige) and bmad-check-implementation-readiness
+      are removed outright and listed in removals.txt; bmad-index-docs and
+      bmad-shard-doc are removed. bmad-spec moves from core into bmm.
+    adaptation: >-
+      Packaging absorbs this (removals.txt processing shipped, aae-orc-z2zu),
+      but two consumer-visible effects must be stated at release: the synced
+      binding count drops, and the [agents.*] roster loses Paige, so party
+      mode convenes a smaller cast. Verify the removals.txt processor runs
+      against this release rather than assuming it.
+    references:
+      - upstream #2603, #2608, #2611, #2651, #2658, #2659, #2674
+      - aae-orc-z2zu (removals.txt processor)
+
+  - id: customization-file-renames
+    introduced_in: 6.11.0
+    resolved_in: null
+    severity: consumer-migration
+    summary: >-
+      Renamed skills require renamed customization files:
+      _bmad/custom/bmad-quick-dev{,.user}.toml -> bmad-build{,.user}.toml,
+      bmad-dev-auto -> bmad-build-auto, bmad-sprint-status ->
+      bmad-sprint-planning, bmad-document-project /
+      bmad-generate-project-context -> bmad-project-context. The shim offers
+      migration but requires explicit approval and never overwrites; declined
+      or unavailable, it HALTS rather than forwarding.
+    adaptation: >-
+      Load-bearing for the sideshow customization bridge: those files live in
+      the consumer's _bmad-custom/, which the bridge symlinks to
+      _bmad/custom/. Upgrading the pack does not rename them, so an unattended
+      run on an old name with a legacy customization file refuses to start.
+      Release notes must name the files to rename. Also note config now
+      resolves as a four-file layered TOML chain
+      (config.toml -> config.user.toml -> custom/config.toml ->
+      custom/config.user.toml).
+    references:
+      - upstream #2651, #2659, #2674, #2281
+
+# Revalidation in flight (runbook: registry/pack-support-revalidation-runbook.md).
+# Recorded so the next reader knows Step 1 is banked and does not redo it.
+revalidation_in_progress:
+  - version: 6.11.0
+    step_1_source_verification: complete
+    step_1_at: "2026-08-28"
+    step_1_result: >-
+      All six pipeline_assumptions verified against the v6.10.0..v6.11.0
+      upstream diff. argv-contract: tools/installer/commands/install.js and
+      tools/installer/bmad-cli.js are both unchanged across the gap.
+      bmad-output-dir: paths.bmadDir unchanged; the new render/ tree is a
+      child of it. manifest-shape: one-line change, excluding 'render' from
+      module enumeration. module-set: git-env sanitization only; pin/tag
+      mechanics unchanged. claude-sibling: antigravity-cli added, claude-code
+      untouched. node-engine: engines unchanged at >=20.12.0.
+    step_2_test_build: NOT RUN
+    step_3_artifact_verification: NOT RUN
+    blocker: >-
+      Build dispatch requires admin on ArcavenAE/sideshow-packs; the
+      identity available at analysis time (arcavenai) has pull-only access
+      and received HTTP 403 on workflow_dispatch. Steps 2 and 3 need an
+      identity with write/admin.
+    do_not: >-
+      Do not extend the validated bracket on Step 1 alone. The runbook is
+      explicit that the bracket is extended with evidence, and the test build
+      is where argv and manifest assumptions are proven rather than read.
 
 # For versions OUTSIDE every validated bracket: check-support.sh points
 # here. An LLM (or human) follows this runbook to re-validate, then
