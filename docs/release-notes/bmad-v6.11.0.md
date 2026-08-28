@@ -14,7 +14,7 @@ Frozen-composition build of BMad Method 6.11.0, assembled by running the
 upstream installer once in auditable CI and signing the result. Installing
 this artifact never executes upstream JavaScript on your machine.
 
-**Composition — six modules.** `core`, `bmm`, `cis`, `gds`, `tea`, `bmb`,
+**Composition — seven modules.** `core`, `bmm`, `cis`, `gds`, `tea`, `bmb`,
 `wds`. This is the full composition, and it is now declared in
 `registry/bmad-pack-support.yaml` as `default_modules` rather than as a
 literal inside the build workflow. The previous arrangement could not be
