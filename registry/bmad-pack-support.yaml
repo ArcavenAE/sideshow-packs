@@ -92,13 +92,18 @@ pipeline_assumptions:
 
 validated:
   - min: 6.3.0
-    max: 6.10.0   # inclusive
-    validated_at: "2026-07-12"
+    max: 6.11.0   # inclusive
+    validated_at: "2026-08-28"
     method: >-
       per-transition installer source diff across all 9 stable tags +
       9-rung build ladder (sign=false publish=false), pin composition
-      verified per rung
+      verified per rung. Extended to 6.11.0 on 2026-08-28: v6.10.0..v6.11.0
+      installer diff against all six assumptions, test build (run
+      33212739383), and artifact verification via scripts/verify-artifact.sh.
     evidence:
+      - "6.11.0 run 33212739383 (test build, success)"
+      - "6.11.0 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2024 files, +43 (2%) vs 6.10.0, in band; every external module carries a resolved sha; pack.yaml coherent"
+      - aae-orc:_kos/findings/finding-147-unoverridable-ci-default-decided-composition.md
       - aae-orc:_kos/findings/finding-070-bmad-upstream-prescan-and-module-pinning.md
       - aae-orc:_kos/findings/finding-071-bmad-packaging-ladder-results.md
       - aae-orc:_kos/findings/finding-035-bmad-65-sideshow-readiness.md
@@ -358,33 +363,6 @@ wrinkles:
       custom/config.user.toml).
     references:
       - upstream #2651, #2659, #2674, #2281
-
-# Revalidation in flight (runbook: registry/pack-support-revalidation-runbook.md).
-# Recorded so the next reader knows Step 1 is banked and does not redo it.
-revalidation_in_progress:
-  - version: 6.11.0
-    step_1_source_verification: complete
-    step_1_at: "2026-08-28"
-    step_1_result: >-
-      All six pipeline_assumptions verified against the v6.10.0..v6.11.0
-      upstream diff. argv-contract: tools/installer/commands/install.js and
-      tools/installer/bmad-cli.js are both unchanged across the gap.
-      bmad-output-dir: paths.bmadDir unchanged; the new render/ tree is a
-      child of it. manifest-shape: one-line change, excluding 'render' from
-      module enumeration. module-set: git-env sanitization only; pin/tag
-      mechanics unchanged. claude-sibling: antigravity-cli added, claude-code
-      untouched. node-engine: engines unchanged at >=20.12.0.
-    step_2_test_build: NOT RUN
-    step_3_artifact_verification: NOT RUN
-    blocker: >-
-      Build dispatch requires admin on ArcavenAE/sideshow-packs; the
-      identity available at analysis time (arcavenai) has pull-only access
-      and received HTTP 403 on workflow_dispatch. Steps 2 and 3 need an
-      identity with write/admin.
-    do_not: >-
-      Do not extend the validated bracket on Step 1 alone. The runbook is
-      explicit that the bracket is extended with evidence, and the test build
-      is where argv and manifest assumptions are proven rather than read.
 
 # For versions OUTSIDE every validated bracket: check-support.sh points
 # here. An LLM (or human) follows this runbook to re-validate, then
