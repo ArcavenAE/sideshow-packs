@@ -74,11 +74,16 @@ else
 fi
 
 # ---- 3. file census, against the previous release ------------------------
-COUNT="$(( $(wc -l < "${MANIFEST}") - 1 ))"   # minus header
+# file-manifest.csv carries no header row: the build writes one
+# `sha256,size,relpath` line per file and nothing else. The `- 1` that
+# used to sit here undercounted every pack by exactly one, and the wrong
+# number reached two release bodies and two register evidence lines
+# before anyone compared it against install.meta's own file_count.
+COUNT="$(wc -l < "${MANIFEST}" | tr -d ' ')"
 ok "file-manifest lists ${COUNT} files"
 
 if [[ -n "${PREV_MANIFEST}" && -f "${PREV_MANIFEST}" ]]; then
-    PREV_COUNT="$(( $(wc -l < "${PREV_MANIFEST}") - 1 ))"
+    PREV_COUNT="$(wc -l < "${PREV_MANIFEST}" | tr -d ' ')"
     DELTA=$(( COUNT - PREV_COUNT ))
     PCT=$(( PREV_COUNT > 0 ? (DELTA * 100 / PREV_COUNT) : 0 ))
     note "info" "previous: ${PREV_COUNT} files, delta: ${DELTA} (${PCT}%)"

@@ -45,6 +45,20 @@
 #   UPSTREAM       upstream repo (default bmad-code-org/BMAD-METHOD)
 #   PACK           pack name (default bmad)
 #
+# ONLY bmad is watched today, and the workflow runs this script once with
+# those defaults. vsdd-factory is NOT watched: upstream published
+# v1.0.0-rc.25 on 2026-09-04 and no intake run saw it, because this script
+# assumes a stable-semver release line in four places and vsdd-factory
+# ships a prerelease line (v1.0.0-rc.N):
+#   1. the upstream gather rejects `.prerelease == true`
+#   2. its tag filter is `^v[0-9]+\.[0-9]+\.[0-9]+$`, which no rc tag matches
+#   3. the FLOOR expression parses each dotted part with `tonumber`, so a
+#      register carrying `1.0.0-rc.23` fails with `"0-rc" cannot be parsed
+#      as a number` before any release is considered
+#   4. modules_for() is bmad composition policy with no direct-tree branch
+# Tracked as aae-orc-ss5tn. The ledger title and the Latest-marker filter
+# below are already pack-safe, so those four are the whole remaining gap.
+#
 # Test seams (paths to JSON fixtures; unset = live gh calls):
 #   UPSTREAM_RELEASES_FILE  [{tag_name, published_at, draft, prerelease}]
 #   LOCAL_RELEASES_FILE     [{tag_name, draft}]
@@ -66,7 +80,16 @@ MAX_DISPATCH="${MAX_DISPATCH:-3}"
 REPO="${REPO:-ArcavenAE/sideshow-packs}"
 UPSTREAM="${UPSTREAM:-bmad-code-org/BMAD-METHOD}"
 PACK="${PACK:-bmad}"
-LEDGER_TITLE="upstream-intake: observation ledger (machine state)"
+# Pack-scoped, so two packs never share one ledger issue. Before this the
+# title was a single constant and only bmad was ever watched, which held
+# while the script ran once per schedule; the moment the workflow runs it
+# per pack, a shared ledger is two jobs editing one issue body.
+# The bmad ledger keeps the original title so its history is not orphaned.
+if [[ "${PACK}" == "bmad" ]]; then
+    LEDGER_TITLE="upstream-intake: observation ledger (machine state)"
+else
+    LEDGER_TITLE="upstream-intake: ${PACK} observation ledger (machine state)"
+fi
 
 # Numeric settings reach bash arithmetic contexts, which evaluate
 # array subscripts and therefore command substitutions. Reject
@@ -243,7 +266,7 @@ in_bracket() { # version -> 0/1 exit
 # --- Gather ------------------------------------------------------------
 
 UPSTREAM_JSON="$(upstream_releases_json | jq '[.[]
-    | select(.draft == false and .prerelease == false)
+    | select(.draft == false and (.prerelease // false) == false)
     | select(.tag_name | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))
     | {tag_name, published_at}]')"
 
@@ -375,8 +398,14 @@ fi
 # draft) release of this pack. GitHub's default assignment follows
 # publish order, which is wrong for batch backfills.
 
+# Prereleases are excluded deliberately. The marker is repo-wide while
+# this computation is per-pack, so once intake runs for more than one
+# pack the two would fight over it every run — and a prerelease line
+# (vsdd-factory tracks upstream's rc sequence) should never carry
+# "Latest" in the first place. With prereleases filtered out, a pack
+# with no stable release simply declines to touch the marker.
 HIGHEST_PUBLISHED="$(jq -r --arg p "${PACK}-v" \
-    '[.[] | select(.draft == false) | .tag_name | select(startswith($p)) | ltrimstr($p)] | .[]' \
+    '[.[] | select(.draft == false and (.prerelease // false) == false) | .tag_name | select(startswith($p)) | ltrimstr($p)] | .[]' \
     <<< "${LOCAL_JSON}" | sort -V | tail -1)"
 
 if [[ -n "${HIGHEST_PUBLISHED}" ]]; then

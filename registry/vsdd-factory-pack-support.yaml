@@ -163,7 +163,7 @@ validated:
       mirror was taken; third-party content stayed in quarantine.
     evidence:
       - run 34280184572 (test build, success)
-      - "verify-artifact.sh vs rc.24: 1279 files, +4 (0%), within band; pack.yaml version coherent"
+      - "verify-artifact.sh vs rc.24: 1280 files, +4 (0%), within band; pack.yaml version coherent"
       - "exec-manifest.txt: 118 executables, matching the pre-build tree census exactly"
       - "exec-bit SET diff (not count): +stamp-state-timestamp.wasm, +validate-unvalidated-mutation-marker.wasm, -verify-state-timestamp-refresh.wasm (mode 755 -> 644, file retained)"
       - "unit census: 17 top-level units, zero undeclared"
@@ -183,7 +183,7 @@ validated:
       taken; third-party content stayed in quarantine.
     evidence:
       - run 33212381315 (test build, success)
-      - "verify-artifact.sh: 1275 files, +85 (7%) vs rc.23, within band; pack.yaml version coherent"
+      - "verify-artifact.sh: 1276 files, +85 (7%) vs rc.23, within band (count corrected 2026-09-08: the tool subtracted a header row the manifest does not have); pack.yaml version coherent"
       - "exec-manifest.txt: 117 executables, matching the pre-build tree census exactly"
       - all five pipeline_assumptions verified; exec-bit delta additive, zero removals
 
