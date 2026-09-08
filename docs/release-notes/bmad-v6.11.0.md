@@ -52,7 +52,7 @@ cosign verify-blob \
 
 `install.meta.yaml` is signed separately and carries the full source chain:
 upstream git sha, npm tarball digests, and the resolved version of every
-external module. `file-manifest.csv` lists **2024** files with
+external module. `file-manifest.csv` lists **2025** files with
 per-file digests.
 
 ## Before you upgrade

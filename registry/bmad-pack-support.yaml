@@ -102,7 +102,7 @@ validated:
       33212739383), and artifact verification via scripts/verify-artifact.sh.
     evidence:
       - "6.11.0 run 33212739383 (test build, success)"
-      - "6.11.0 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2024 files, +43 (2%) vs 6.10.0, in band; every external module carries a resolved sha; pack.yaml coherent"
+      - "6.11.0 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2025 files, +43 (2%) vs 6.10.0, in band (count corrected 2026-09-08: the tool subtracted a header row the manifest does not have); every external module carries a resolved sha; pack.yaml coherent"
       - aae-orc:_kos/findings/finding-147-unoverridable-ci-default-decided-composition.md
       - aae-orc:_kos/findings/finding-070-bmad-upstream-prescan-and-module-pinning.md
       - aae-orc:_kos/findings/finding-071-bmad-packaging-ladder-results.md

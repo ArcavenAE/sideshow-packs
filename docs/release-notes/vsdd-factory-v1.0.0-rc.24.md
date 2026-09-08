@@ -37,7 +37,7 @@ cosign verify-blob \
 ```
 
 `exec-manifest.txt` carries the executable-bit census, and
-`file-manifest.csv` lists **1275** files with per-file digests.
+`file-manifest.csv` lists **1276** files with per-file digests.
 
 ## What changed since rc.23
 
