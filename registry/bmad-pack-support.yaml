@@ -92,8 +92,8 @@ pipeline_assumptions:
 
 validated:
   - min: 6.3.0
-    max: 6.11.0   # inclusive
-    validated_at: "2026-08-28"
+    max: 6.12.0   # inclusive
+    validated_at: "2026-09-08"
     method: >-
       per-transition installer source diff across all 9 stable tags +
       9-rung build ladder (sign=false publish=false), pin composition
@@ -103,6 +103,9 @@ validated:
     evidence:
       - "6.11.0 run 33212739383 (test build, success)"
       - "6.11.0 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2025 files, +43 (2%) vs 6.10.0, in band (count corrected 2026-09-08: the tool subtracted a header row the manifest does not have); every external module carries a resolved sha; pack.yaml coherent"
+      - "6.12.0 run 34284724143 (test build, success, expected_sha 05bfbd46d00766ec88eb9b42e76be2c575d64d7b)"
+      - "6.12.0 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2023 files, -2 vs 6.11.0; every external module carries a resolved sha; pack.yaml coherent"
+      - "6.12.0 census delta fully attributed: 86 removed / 84 added, every path assigned to one of four causes (32 files across 20 retired shim IDs dropped by the new opt-in default; checkpoint-preview renamed to walkthrough, 8 for 8; 5 __pycache__ artefacts newly filtered; gds v0.6.0->v0.7.2, tea v1.21.10->v1.24.0, cis v0.2.1->v0.3.2 pin advance). No unexplained path."
       - aae-orc:_kos/findings/finding-147-unoverridable-ci-default-decided-composition.md
       - aae-orc:_kos/findings/finding-070-bmad-upstream-prescan-and-module-pinning.md
       - aae-orc:_kos/findings/finding-071-bmad-packaging-ladder-results.md
@@ -245,9 +248,9 @@ wrinkles:
     references:
       - upstream commit 02739932 / PR #2495
 
-  # ---- 6.11.0 (Step 1 of the revalidation runbook; bracket NOT yet
-  # extended — Steps 2/3, the test build and artifact verification, have
-  # not run. See revalidation_in_progress below.) ----
+  # ---- 6.11.0 (bracket extended 2026-08-28; all three runbook steps
+  # ran. The header this replaced still said Steps 2/3 had not run,
+  # which the validated block above had already contradicted.) ----
 
   - id: render-dir-under-bmad
     introduced_in: 6.11.0
@@ -363,6 +366,81 @@ wrinkles:
       custom/config.user.toml).
     references:
       - upstream #2651, #2659, #2674, #2281
+
+  # ---- 6.12.0 (bracket extended 2026-09-08; all three runbook steps ran) ----
+
+  - id: shims-opt-in-fresh-install
+    introduced_in: 6.12.0
+    resolved_in: null
+    severity: consumer-migration
+    summary: >-
+      Deprecated v6-shim skills become opt-in. New --shims / --no-shims flags;
+      with neither, inferShimPreference returns false for a fresh install, so
+      a non-interactive build ships no shims at all. Our 6.11.0 pack carried
+      20 of them, 32 files (bmad-create-prd, bmad-create-story,
+      bmad-dev-story, bmad-quick-dev, bmad-validate-prd and the rest); the
+      6.12.0 pack carries none, and the retired IDs stop resolving. A shim is
+      marked by metadata.lifecycle: shim in its own SKILL.md, not by living
+      under v6-shims/: bmad-generate-project-context sits in plan/ beside live
+      skills and gains the marker at this version.
+      The installer also writes installation.installShims into manifest.yaml
+      whenever shims are available.
+    adaptation: >-
+      None to the pipeline: --yes returns before the confirm prompt and again
+      before the TTY guard, so there is no hang, and the default matches what
+      an ordinary `npx bmad-method install` does on a fresh tree. This is a
+      release-notes obligation, not a build change. Anyone still invoking a
+      retired v6 name must move to its replacement; adding --shims to the
+      build argv would restore them if we ever decide the pack should differ
+      from the upstream default. manifest-shape still holds (installShims is
+      an added key beside .modules, not a reshape).
+    references:
+      - upstream v6.12.0 release notes ("Deprecated shims are opt-in on fresh installs")
+      - tools/installer/core/shim-policy.js (new at this version)
+      - tools/installer/ui.js _selectShimPreference (the --yes / non-TTY guards)
+
+  - id: checkpoint-preview-renamed-walkthrough
+    introduced_in: 6.12.0
+    resolved_in: null
+    severity: consumer-migration
+    summary: >-
+      bmad-checkpoint-preview becomes bmad-walkthrough (code CK -> WT). The
+      old ID forwards only through a shim, and shims are off by default at
+      this version, so in our pack the old name simply does not exist.
+    adaptation: >-
+      Release notes name the rename explicitly. Customization files follow the
+      6.11.0 pattern: _bmad/custom/bmad-checkpoint-preview{,.user}.toml must be
+      renamed to bmad-walkthrough{,.user}.toml, and those files live in the
+      consumer's _bmad-custom/ where a pack upgrade does not touch them.
+    references:
+      - upstream v6.12.0 release notes
+      - see also customization-file-renames (6.11.0), same failure shape
+
+  - id: pycache-filtered-from-skill-copies
+    introduced_in: 6.12.0
+    resolved_in: null
+    severity: adaptation-not-needed
+    summary: >-
+      The skill copier now skips __pycache__ directories and .pyc/.pyo files.
+      Our 6.11.0 pack shipped 5 compiled Python artefacts under
+      .claude/skills/bmad-{retrospective,sprint-planning}/scripts/; the 6.12.0
+      pack ships none.
+    adaptation: >-
+      None. Recorded so the file-count drop reads as intended upstream
+      hygiene rather than a packaging regression.
+    references:
+      - tools/installer/ide/_config-driven.js (skipPatterns / skipSuffixes)
+
+  - id: platform-grok-polytoken-zcode
+    introduced_in: 6.12.0
+    resolved_in: null
+    severity: adaptation-not-needed
+    summary: >-
+      Three installer targets added to platform-codes.yaml: grok, polytoken,
+      zcode. The claude-code entry is untouched.
+    adaptation: None. We build with --tools claude-code; claude-sibling holds.
+    references:
+      - tools/installer/ide/platform-codes.yaml
 
 # For versions OUTSIDE every validated bracket: check-support.sh points
 # here. An LLM (or human) follows this runbook to re-validate, then

@@ -37,7 +37,7 @@ verified:
 | bmb | v2.1.0 | external |
 | wds | v0.4.3 | external |
 
-The file census is 2024 files, +43 (2%) against 6.10.0 — consistent with a
+The file census is 2025 files, +43 (2%) against 6.10.0 — consistent with a
 release that removes several skills and adds the `render/` snapshot tree.
 
 ## Verify
