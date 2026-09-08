@@ -173,6 +173,90 @@ echo "[build-vsdd] per-machine bookkeeping absent, ${TEMPLATES} platform templat
 WASM_COUNT="$(find "${PACK_STAGE}/hook-plugins" -name '*.wasm' | wc -l | tr -d ' ')"
 DISPATCHER_COUNT="$(find "${PACK_STAGE}/hooks/dispatcher/bin" -type f | wc -l | tr -d ' ')"
 
+# 3b. Coherence gates (added for rc.25). The checks above verify that
+#     CAPTURE was faithful — same tag on both sides of every
+#     comparison. They cannot see anything about the upstream tree
+#     itself, so three defects reached consumers unremarked: an orphan
+#     wasm that no registry dispatches (rc.24 shipped
+#     policy15-attestation-gate.wasm; upstream removed it in rc.25 and
+#     shipped last-amended-migrate.wasm the same way), namespace
+#     references in store-reference units that the bind-time rewrite
+#     can never reach, and unit-level growth that no one measured
+#     because the unshape declaration was written against rc.23 and
+#     never re-read. Each gate below either refuses or records; none
+#     of them guesses.
+
+# deny-by-default unit census (aae-orc-d3nq.59). A top-level unit that
+# the register does not declare is a build error, because the two ways
+# to handle it silently — materialize it or drop it — are both wrong.
+DECLARED_UNITS="$(yq -r '.unshape_units | to_entries | map(.value[]) | .[]' "${REGISTER}" | LC_ALL=C sort -u)"
+ACTUAL_UNITS="$(ls -A "${PACK_STAGE}" | LC_ALL=C sort)"
+UNDECLARED="$(comm -13 <(printf '%s\n' "${DECLARED_UNITS}") <(printf '%s\n' "${ACTUAL_UNITS}") || true)"
+if [[ -n "${UNDECLARED}" ]]; then
+    echo "[build-vsdd] FATAL: undeclared top-level unit(s) in the captured tree:"
+    printf '  %s\n' ${UNDECLARED}
+    echo "[build-vsdd]   disposition each one in registry/vsdd-factory-pack-support.yaml unshape_units,"
+    echo "[build-vsdd]   and price the choice in sideshow/docs/divergence-register.md before rebuilding."
+    exit 1
+fi
+echo "[build-vsdd] unit census OK ($(printf '%s\n' "${ACTUAL_UNITS}" | wc -l | tr -d ' ') top-level units, all declared)"
+
+# wasm/registry coherence. Every shipped hook plugin should be
+# dispatched by hooks-registry.toml or resolvers-registry.toml; one
+# that is dispatched by neither is inert weight at best and a
+# mis-bundled native crate at worst. Upstream ships orphans, so this
+# records rather than refuses by default: the set lands in
+# install.meta under the signature, and verify-artifact.sh flags a
+# NEW orphan against the previous version. REQUIRE_NO_ORPHAN_WASM=1
+# turns it into a hard gate for a build that must be clean.
+ORPHAN_MANIFEST="${OUT_DIR}/wasm-orphans.txt"
+: > "${ORPHAN_MANIFEST}"
+REGISTRY_REFS="$(cat "${PACK_STAGE}/hooks-registry.toml" "${PACK_STAGE}/resolvers-registry.toml" 2>/dev/null \
+    | grep -oE 'hook-plugins/[A-Za-z0-9._-]+\.wasm' | sed 's|hook-plugins/||' | LC_ALL=C sort -u)"
+while IFS= read -r w; do
+    [[ -n "${w}" ]] || continue
+    if ! printf '%s\n' "${REGISTRY_REFS}" | grep -qx "${w}"; then
+        echo "${w}" >> "${ORPHAN_MANIFEST}"
+    fi
+done < <(cd "${PACK_STAGE}/hook-plugins" && ls -1 *.wasm 2>/dev/null | LC_ALL=C sort)
+ORPHAN_COUNT="$(wc -l < "${ORPHAN_MANIFEST}" | tr -d ' ')"
+if (( ORPHAN_COUNT > 0 )); then
+    echo "[build-vsdd] WARN: ${ORPHAN_COUNT} wasm hook-plugin(s) referenced by neither registry:"
+    sed 's/^/  /' "${ORPHAN_MANIFEST}"
+    if [[ "${REQUIRE_NO_ORPHAN_WASM:-0}" == "1" ]]; then
+        echo "[build-vsdd] FATAL: REQUIRE_NO_ORPHAN_WASM=1 and orphans present"
+        exit 1
+    fi
+else
+    echo "[build-vsdd] wasm/registry coherence OK (0 orphans)"
+fi
+
+# Un-rewritten namespace references. The bind-time rewrite only reaches
+# materialize units (skills/, agents/); the store stays byte-frozen, so
+# every `/<pack>:<name>` reference in a store-reference unit still names
+# a command that does not exist on the repo-bindings channel. Measured
+# per release instead of assumed, because the worst of them are in
+# templates/ that get copied into the consumer's own .factory/ state.
+UNREWRITTEN_MANIFEST="${OUT_DIR}/unrewritten-refs.txt"
+( cd "${PACK_STAGE}" && grep -rlE '/vsdd-factory:[A-Za-z0-9]' . 2>/dev/null \
+    | sed 's|^\./||' | grep -vE '^(skills|agents|tests)/' | LC_ALL=C sort ) > "${UNREWRITTEN_MANIFEST}" || true
+UNREWRITTEN_FILES="$(wc -l < "${UNREWRITTEN_MANIFEST}" | tr -d ' ')"
+UNREWRITTEN_REFS=0
+if (( UNREWRITTEN_FILES > 0 )); then
+    UNREWRITTEN_REFS="$( cd "${PACK_STAGE}" && xargs -I{} grep -coE '/vsdd-factory:[A-Za-z0-9_-]+' {} < "${UNREWRITTEN_MANIFEST}" \
+        | awk '{t+=$1} END{print t+0}' )"
+    echo "[build-vsdd] note: ${UNREWRITTEN_REFS} namespace reference(s) in ${UNREWRITTEN_FILES} store-reference file(s) the bind rewrite cannot reach"
+fi
+
+# Per-unit file census, so growth is visible as a delta rather than
+# discovered when a hardcoded number in prose goes stale.
+UNIT_CENSUS="${OUT_DIR}/unit-census.txt"
+( cd "${PACK_STAGE}" && for u in $(ls -A); do
+      if [[ -d "${u}" ]]; then printf '%s\t%s\n' "${u}" "$(find "${u}" -type f | wc -l | tr -d ' ')";
+      else printf '%s\t1\n' "${u}"; fi
+  done | LC_ALL=C sort ) > "${UNIT_CENSUS}"
+echo "[build-vsdd] emitted unit census, wasm-orphan and unrewritten-ref manifests"
+
 # 4. Emit pack.yaml (consumed by sideshow). No custom_bridge, no
 #    runtime_links — those are bmad-shaped concerns. The load-bearing
 #    declaration is the activation contract.
@@ -248,9 +332,11 @@ fi
 if command -v sha256sum >/dev/null; then
     FILE_MANIFEST_SHA="$(sha256sum "${OUT_DIR}/file-manifest.csv" | awk '{print $1}')"
     EXEC_MANIFEST_SHA="$(sha256sum "${OUT_DIR}/exec-manifest.txt" | awk '{print $1}')"
+    UNIT_CENSUS_SHA="$(sha256sum "${UNIT_CENSUS}" | awk '{print $1}')"
 else
     FILE_MANIFEST_SHA="$(shasum -a 256 "${OUT_DIR}/file-manifest.csv" | awk '{print $1}')"
     EXEC_MANIFEST_SHA="$(shasum -a 256 "${OUT_DIR}/exec-manifest.txt" | awk '{print $1}')"
+    UNIT_CENSUS_SHA="$(shasum -a 256 "${UNIT_CENSUS}" | awk '{print $1}')"
 fi
 
 # 7. install.meta — git-tree provenance (no npm to cite). Field shape
@@ -277,6 +363,11 @@ jq -n \
   --argjson exec_count "${ACTUAL_EXEC}" \
   --argjson wasm_count "${WASM_COUNT}" \
   --argjson dispatcher_count "${DISPATCHER_COUNT}" \
+  --argjson orphan_count "${ORPHAN_COUNT}" \
+  --arg orphans "$(paste -sd, "${ORPHAN_MANIFEST}" 2>/dev/null || true)" \
+  --argjson unrewritten_refs "${UNREWRITTEN_REFS}" \
+  --argjson unrewritten_files "${UNREWRITTEN_FILES}" \
+  --arg unit_census_sha256 "${UNIT_CENSUS_SHA}" \
   --arg tarball "$(basename "${TARBALL}")" \
   --arg tarball_sha256 "${TARBALL_SHA}" \
   --argjson tarball_bytes "${TARBALL_SIZE}" \
@@ -312,13 +403,23 @@ jq -n \
       executable_count: $exec_count,
       wasm_hook_plugins: $wasm_count,
       dispatcher_binaries: $dispatcher_count,
-      in_plugin_tests: true
+      in_plugin_tests: true,
+      unit_census_sha256: $unit_census_sha256,
+      wasm_orphans: {
+        count: $orphan_count,
+        names: ($orphans | if . == "" then [] else split(",") end)
+      }
     },
     activation: {
       default_scope: "per-repo",
       per_repo_required: true,
       mechanism: "repo-bindings",
       binding_prefix: "vsdd"
+    },
+    channel_divergence: {
+      unrewritten_namespace_refs: $unrewritten_refs,
+      unrewritten_namespace_files: $unrewritten_files,
+      note: "namespace references inside store-reference units; the bind-time rewrite reaches materialize units only, so these name commands that do not resolve on the repo-bindings channel"
     },
     artifact: {
       tarball: $tarball,

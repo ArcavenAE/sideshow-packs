@@ -102,6 +102,36 @@ activation:
     aae-orc-d3nq.48, successor to the closed aae-orc-f13j); this
     register is the declaration both sides read.
 
+# Declared top-level units of the upstream plugin tree, with the
+# disposition sideshow's unshaping spec assigns each one
+# (sideshow/docs/unshaping-spec.md). This is the deny-by-default
+# census gate (aae-orc-d3nq.59): the build fails when the captured
+# tree carries a top-level unit that is not declared here, so a new
+# upstream directory has to be dispositioned deliberately instead of
+# being materialized or dropped by accident. Counts deliberately do
+# NOT live here — they drift every release and a count gate would
+# either block routine growth or be widened until it means nothing.
+# Growth is measured instead, in install.meta's unit census, and read
+# as a delta by verify-artifact.sh.
+unshape_units:
+  materialize: [skills, agents]
+  store_reference:
+    - bin
+    - config
+    - docs
+    - fixtures
+    - hook-plugins
+    - hooks
+    - hooks-registry.toml
+    - resolvers-registry.toml
+    - rules
+    - templates
+    - tools
+    - workflows
+  exclude: [tests, .claude-plugin]
+  # Added by the build itself, not captured from upstream.
+  build_added: [LICENSE, pack.yaml]
+
 pipeline_assumptions:
   - id: plugin-dir-exists
     desc: plugins/vsdd-factory exists at the captured tag and is the complete content surface
@@ -118,6 +148,28 @@ pipeline_assumptions:
     desc: Claude Code >= 2.1.105 (advisory check-harness-version.sh, PreCompact, never blocks)
 
 validated:
+  - min: 1.0.0-rc.25
+    max: 1.0.0-rc.25   # inclusive; single-rung bracket
+    release_line: prerelease
+    validated_at: "2026-09-08"
+    upstream_commit: 51023185658350afaacaa931a175103d915d14ba
+    method: >-
+      rc.24 -> rc.25 compare via the GitHub compare and tree APIs (14 commits,
+      200 files, 54 of them under plugins/vsdd-factory) with a mechanical
+      assumption sweep at the rc.25 commit, then a pipeline test build (run
+      34280184572, sign=false publish=false) and artifact verification via
+      scripts/verify-artifact.sh against the rc.24 manifest. Re-run locally
+      through the three coherence gates added in the same change. No local
+      mirror was taken; third-party content stayed in quarantine.
+    evidence:
+      - run 34280184572 (test build, success)
+      - "verify-artifact.sh vs rc.24: 1279 files, +4 (0%), within band; pack.yaml version coherent"
+      - "exec-manifest.txt: 118 executables, matching the pre-build tree census exactly"
+      - "exec-bit SET diff (not count): +stamp-state-timestamp.wasm, +validate-unvalidated-mutation-marker.wasm, -verify-state-timestamp-refresh.wasm (mode 755 -> 644, file retained)"
+      - "unit census: 17 top-level units, zero undeclared"
+      - "wasm/registry coherence: 2 orphans recorded (see the wasm-orphans-ship-undetected wrinkle)"
+      - all five pipeline_assumptions verified; plugin.json differs from rc.24 by the version string alone
+
   - min: 1.0.0-rc.24
     max: 1.0.0-rc.24   # inclusive; single-rung bracket
     release_line: prerelease
@@ -188,6 +240,84 @@ packaged_unsupported:
 # ~unchanged — skills/ byte-identical, agents/ +4.6KB on-demand only).
 
 wrinkles:
+  - id: wasm-orphans-ship-undetected
+    introduced_in: 1.0.0-rc.24
+    resolved_in: null
+    severity: content-integrity
+    summary: >-
+      The plugin ships wasm hook-plugins that neither hooks-registry.toml
+      nor resolvers-registry.toml dispatches. rc.24 carried
+      policy15-attestation-gate.wasm, a native CLI crate swept into a
+      workspace-wide wasm32-wasip1 build (upstream #786). rc.25 removes
+      that one, adds recurrence prevention to release.yml, and ships
+      last-amended-migrate.wasm the same way — whose own Cargo.toml says
+      "Standalone native CLI binary — NOT a WASM hook plugin ... not built
+      for the wasm32-wasip1 target". rc.25 also retains
+      verify-state-timestamp-refresh.wasm after deleting its registry
+      entry (superseded by stamp-state-timestamp per ADR-046), with the
+      mode dropped 755 -> 644.
+    adaptation: >-
+      Build reconciles hook-plugins/*.wasm against both registries, writes
+      wasm-orphans.txt, and records the set in install.meta under
+      content.wasm_orphans so it is a signed fact rather than a surprise.
+      Records by default because upstream ships orphans and packaging must
+      not block on upstream's bug; REQUIRE_NO_ORPHAN_WASM=1 makes it a hard
+      gate. Orphans are inert weight, not executed content: the dispatcher
+      loads by registry path.
+    references:
+      - drbothen/vsdd-factory#786 (rc.24 orphan, fixed in rc.25)
+      - crates/last-amended-migrate/Cargo.toml @ v1.0.0-rc.25
+      - sideshow _kos/findings/finding-004-packaging-authenticity-vs-plugin-channel.md
+
+  - id: namespace-refs-unreachable-in-store
+    introduced_in: null
+    resolved_in: null
+    severity: channel-divergence
+    summary: >-
+      The repo-bindings channel rewrites `<pack>:<name>` to the prefixed
+      bare name, but only in materialize units (skills/, agents/); the
+      store is byte-frozen by design. At rc.25 that leaves 25 references
+      across 13 store-reference files naming commands that do not resolve
+      on this channel. Three classes, worsening: docs read at runtime;
+      four hook scripts that emit the wrong command to the model when they
+      fire; templates/state-template.md and story-template.md, which are
+      COPIED into the consumer's own .factory/ state, so the wrong
+      instruction becomes durable user-owned content. Two are compiled
+      into wasm (validate-artifact-path, warn-pending-wave-gate) and no
+      bind-time transform can reach them at all.
+    adaptation: >-
+      Build emits unrewritten-refs.txt and records the counts in
+      install.meta under channel_divergence, so the cost is measured per
+      release instead of assumed. Real fixes are upstream-shaped: emit
+      command names from a variable the channel can set, or ship a name
+      map the dispatcher and skills read.
+    references:
+      - sideshow/docs/divergence-register.md §2
+      - sideshow _kos/findings/finding-004-packaging-authenticity-vs-plugin-channel.md
+
+  - id: unshape-declaration-pinned-to-rc23
+    introduced_in: 1.0.0-rc.24
+    resolved_in: null
+    severity: process-drift
+    summary: >-
+      sideshow's unshaping spec carries a worked inventory with counts
+      taken at rc.23 (34 wasm, 126 skill dirs, 564 test files, 176
+      slash-form references, 23 subagent_type call sites). rc.25 ships 40
+      wasm, 127 skill dirs, 646 test files, and 28 namespaced
+      subagent_type call sites. The per-release census-diff gate the spec
+      claims (deny-by-default on a new top-level unit) was specified as
+      aae-orc-d3nq.59 and never built, so nothing noticed.
+    adaptation: >-
+      The register now declares unshape_units and the build fails on any
+      undeclared top-level unit — the deny-by-default half, which is the
+      half that must refuse. Counts deliberately stay out of the gate: they
+      drift every release, so a count gate either blocks routine growth or
+      gets widened until it means nothing. Growth is measured instead, in
+      install.meta's unit census, and read as a delta by verify-artifact.
+    references:
+      - sideshow/docs/unshaping-spec.md "Worked inventory: vsdd-factory v1.0.0-rc.23"
+      - aae-orc-d3nq.59
+
   - id: release-lines-diverged
     introduced_in: 0.79.4
     resolved_in: null
