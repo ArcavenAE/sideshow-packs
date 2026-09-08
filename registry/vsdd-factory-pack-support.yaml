@@ -264,8 +264,26 @@ wrinkles:
       not block on upstream's bug; REQUIRE_NO_ORPHAN_WASM=1 makes it a hard
       gate. Orphans are inert weight, not executed content: the dispatcher
       loads by registry path.
+    upstream_status: >-
+      FIXED UPSTREAM, NOT YET RELEASED (verified 2026-09-08). Upstream PR #813
+      (commit 5e009dc0, 2026-09-04) removes both orphans from git, adds
+      --exclude last-amended-migrate and --exclude verify-state-timestamp-refresh
+      to release.yml, and adds a defense-in-depth skip arm for each. That commit
+      is on develop and is NOT an ancestor of upstream/main, which is where the
+      v1.0.0-rc.25 tag sits, so the shipped rc.25 predates the fix. The first
+      release cut from develop after 5e009dc0 resolves this; set resolved_in
+      then rather than guessing the version now.
+      Confirmed by running upstream's own standing gate against a clean worktree
+      at the release commit: cargo test -p factory-dispatcher --test
+      bundle_orphan_check at 51023185658350afaacaa931a175103d915d14ba fails
+      test_S_19_04_ac006_T009_hermetic_tracked_bundle_zero_orphans, naming
+      exactly hook-plugins/last-amended-migrate.wasm and
+      hook-plugins/verify-state-timestamp-refresh.wasm. 50 of 51 tests pass.
+      No defect was filed: it would have restated a fix the maintainer had
+      already shipped four days earlier.
     references:
       - drbothen/vsdd-factory#786 (rc.24 orphan, fixed in rc.25)
+      - drbothen/vsdd-factory#813 (both rc.25 orphans, fixed on develop 2026-09-04)
       - crates/last-amended-migrate/Cargo.toml @ v1.0.0-rc.25
       - sideshow _kos/findings/finding-004-packaging-authenticity-vs-plugin-channel.md
 

@@ -86,7 +86,13 @@ to discover.
 Upstream's own `crates/last-amended-migrate/Cargo.toml` describes that crate
 as a "Standalone native CLI binary — NOT a WASM hook plugin", which is the
 same shape as the `policy15-attestation-gate.wasm` orphan rc.25 removes and
-guards against. This one appears to have arrived after the guard.
+guards against. This one arrived after the guard.
+
+Upstream has since fixed it. PR #813 (2026-09-04) drops both files, adds a
+`--exclude` for each to the release build, and adds a skip guard behind that.
+The fix is on `develop` and is not an ancestor of the commit `rc.25` was cut
+from, so it lands in the next release rather than this one. Nothing to do on
+your side; the files are inert until then.
 
 **The registry grew a new `on_error` variant.** `block_if_marker` (ADR-048)
 is used by five entries and requires the rc.25 dispatcher; upstream notes that
