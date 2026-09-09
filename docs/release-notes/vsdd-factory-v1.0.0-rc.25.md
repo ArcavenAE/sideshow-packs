@@ -23,9 +23,19 @@ On this channel there is no machine-wide upgrade. Bindings pin absolute store
 version directories on purpose, so each repo moves on its own:
 
 ```sh
+sideshow use vsdd-factory 1.0.0-rc.25                 # see the note below
 sideshow disable vsdd-factory --repo <path>
 sideshow enable  vsdd-factory@1.0.0-rc.25 --repo <path>
 ```
+
+**The `sideshow use` line is a workaround, not the design.** As published, the
+two-command sequence fails: `enable <pack>@<version>` resolves only against the
+registry, which holds one row per pack, so any version that is not the
+registry-active one reports "not installed". Found on an independent test run
+and filed as `aae-orc-15rhc` (P1). The flip makes the enable resolve; it is
+machine-wide, which is exactly the property this channel otherwise does not
+have, and it does not disturb repos already bound to another version. Once the
+defect is fixed the first line goes away.
 
 **Pinned to a commit, not a tag.** Upstream force-moves release tags by
 design, so a tag is not a stable identifier for a signed artifact. This build
