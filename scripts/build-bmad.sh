@@ -45,6 +45,10 @@
 
 set -euo pipefail
 
+# Resolve the script directory once, before any cd, so sibling scripts stay
+# reachable from later steps that run inside the isolated install directory.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 BMAD_VERSION="${BMAD_VERSION:-6.3.0}"
 BMAD_MODULES="${BMAD_MODULES:-bmm,cis,gds,tea}"
 BMAD_TOOLS="${BMAD_TOOLS:-claude-code}"
@@ -73,7 +77,7 @@ command -v python3 >/dev/null || { echo "error: python3 required"; exit 1; }
 # Packaging-support pre-flight: refuses versions outside the validated
 # bracket in registry/bmad-pack-support.yaml unless ALLOW_UNSUPPORTED=1. See
 # registry/pack-support-revalidation-runbook.md for the supported path forward.
-bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/check-support.sh" bmad "${BMAD_VERSION}"
+bash "${SCRIPT_DIR}/check-support.sh" bmad "${BMAD_VERSION}"
 
 # --- External-module pin resolution -----------------------------------
 #
@@ -237,7 +241,7 @@ cp -R "${INSTALL_ROOT}/_bmad/." "${PACK_STAGE}/"
 # the file manifest (step 4) so the manifest and tarball reflect the shipped,
 # scrubbed content. Fail-closed: a residual sentinel aborts the build.
 echo "[build-bmad] neutralizing CI build identity in staged config"
-python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/neutralize-ci-identity.py" \
+python3 "${SCRIPT_DIR}/neutralize-ci-identity.py" \
     --pack-stage "${PACK_STAGE}" \
     --sentinel-user "${CI_USER_SENTINEL}"
 
