@@ -61,7 +61,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Harden runner
-        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c  # v2.21.0
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
         with:
           egress-policy: audit
 
@@ -168,7 +168,7 @@ jobs:
 
       - name: Create GitHub Release
         if: inputs.publish || github.ref_type == 'tag'
-        uses: step-security/action-gh-release@d2093dbdaf0c6507874908247e14bbc4dee6a72d # v3.0.1
+        uses: step-security/action-gh-release@44319d37c8b7966bf07f89f0cbf63408141446df # v3.0.3
         with:
           name: ${{ steps.params.outputs.release_name }}
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || steps.params.outputs.release_tag }}
