@@ -45,6 +45,10 @@
 
 set -euo pipefail
 
+# Resolve the script directory once, before any cd, so sibling scripts stay
+# reachable from later steps that run inside the isolated install directory.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 BMAD_VERSION="${BMAD_VERSION:-6.3.0}"
 BMAD_MODULES="${BMAD_MODULES:-bmm,cis,gds,tea}"
 BMAD_TOOLS="${BMAD_TOOLS:-claude-code}"
@@ -52,6 +56,13 @@ BMAD_PINS="${BMAD_PINS:-auto}"
 OUT_DIR="${OUT_DIR:-$(pwd)/artifacts}"
 COSIGN="${COSIGN:-0}"
 PACK_REVISION="${PACK_REVISION:-}"
+
+# CI build identity sentinel. Passed to the upstream installer as --user-name
+# so the non-interactive run has an answer for it, then removed from the staged
+# tree by scripts/neutralize-ci-identity.py before packaging, so no build
+# identity ships to consumers (aae-orc-988gh user_name, aae-orc-m79qn
+# project_name). Kept as one variable so the flag and the scrub cannot drift.
+CI_USER_SENTINEL="arcaven-ci"
 if [[ -n "${PACK_REVISION}" && ! "${PACK_REVISION}" =~ ^r[0-9]+$ ]]; then
     echo "[build-bmad] FATAL: PACK_REVISION must look like r2, r3, ... (got ${PACK_REVISION})"
     exit 1
@@ -66,7 +77,7 @@ command -v python3 >/dev/null || { echo "error: python3 required"; exit 1; }
 # Packaging-support pre-flight: refuses versions outside the validated
 # bracket in registry/bmad-pack-support.yaml unless ALLOW_UNSUPPORTED=1. See
 # registry/pack-support-revalidation-runbook.md for the supported path forward.
-bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/check-support.sh" bmad "${BMAD_VERSION}"
+bash "${SCRIPT_DIR}/check-support.sh" bmad "${BMAD_VERSION}"
 
 # --- External-module pin resolution -----------------------------------
 #
@@ -200,7 +211,7 @@ npx --yes "bmad-method@${BMAD_VERSION}" install \
     --modules "${BMAD_MODULES}" \
     --tools "${BMAD_TOOLS}" \
     --action install \
-    --user-name arcaven-ci \
+    --user-name "${CI_USER_SENTINEL}" \
     --output-folder _bmad-output \
     ${PIN_FLAGS[@]+"${PIN_FLAGS[@]}"} \
     --yes \
@@ -223,6 +234,16 @@ PACK_STAGE="${WORK}/pack"
 mkdir -p "${PACK_STAGE}"
 cp -R "${INSTALL_ROOT}/_bmad/." "${PACK_STAGE}/"
 [[ -d "${INSTALL_ROOT}/.claude" ]] && cp -R "${INSTALL_ROOT}/.claude" "${PACK_STAGE}/"
+
+# 3a. Neutralize the CI build identity the installer wrote into config
+# (aae-orc-988gh user_name = the CI sentinel; aae-orc-m79qn project_name =
+# this pipeline's working-directory basename). Runs on the staged tree BEFORE
+# the file manifest (step 4) so the manifest and tarball reflect the shipped,
+# scrubbed content. Fail-closed: a residual sentinel aborts the build.
+echo "[build-bmad] neutralizing CI build identity in staged config"
+python3 "${SCRIPT_DIR}/neutralize-ci-identity.py" \
+    --pack-stage "${PACK_STAGE}" \
+    --sentinel-user "${CI_USER_SENTINEL}"
 
 # 3b. Emit pack.yaml inside the pack (consumed by sideshow's distribute
 # layer for consumer-repo convention enforcement — aae-orc-794h).
@@ -383,6 +404,9 @@ fi
 #   0.1.2 — added optional pack.packaging_revision (re-issue marker;
 #           absent = first issue). Additive only; stays within
 #           sideshow's exact-minor compatibility rule.
+#   0.1.3 — added post_install (records the CI-identity neutralization;
+#           aae-orc-988gh user_name, aae-orc-m79qn project_name).
+#           Additive only.
 PRODUCED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 META="${OUT_DIR}/install.meta.yaml"
 META_JSON="${OUT_DIR}/install.meta.json"
@@ -412,8 +436,9 @@ jq -n \
   --arg exec_manifest_sha256 "${EXEC_MANIFEST_SHA}" \
   --arg signing_status "${SIGNING_STATUS}" \
   --arg packaging_revision "${PACK_REVISION}" \
+  --arg ci_user_sentinel "${CI_USER_SENTINEL}" \
   '{
-    schema_version: "0.1.2",
+    schema_version: "0.1.3",
     schema_stability: "draft",
     pack: ({
       name: "bmad",
@@ -442,10 +467,16 @@ jq -n \
         ("--modules " + $modules_csv),
         ("--tools " + $tools),
         "--action install",
-        "--user-name arcaven-ci",
+        ("--user-name " + $ci_user_sentinel),
         "--output-folder _bmad-output",
         "--yes"
       ]
+    },
+    post_install: {
+      ci_identity_neutralized: true,
+      script: "scripts/neutralize-ci-identity.py",
+      removed_keys: ["user_name", "project_name"],
+      rationale: ("installer answers reflect the CI build environment, not the consumer; the user_name sentinel (" + $ci_user_sentinel + ") and the working-directory project_name are removed from the staged config before packaging so the pack ships no build identity (aae-orc-988gh, aae-orc-m79qn)")
     },
     acquisition: {
       method: "npm-composition",
