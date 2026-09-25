@@ -35,6 +35,12 @@ and commit shas are in `install.meta.yaml`. As built and verified:
 | bmb | v2.2.2 | external | v2.1.0 |
 | wds | v0.4.3 | external | unchanged |
 
+The as-of date is the upstream npm publish date, and it fixes the
+composition: a module release after that date, including any fix it carries,
+is not in this pack, while a native install of the same bmad version resolves
+the newest stable module at install time. `scripts/pin-lag.sh
+install.meta.yaml` reports the current gap per module.
+
 The file census is 2023 files, down 2 from 6.11.0. A net figure that small
 hides real churn, so every path was attributed: 86 removed, 84 added, and
 each one falls into exactly one of four causes. 32 files across 20 retired

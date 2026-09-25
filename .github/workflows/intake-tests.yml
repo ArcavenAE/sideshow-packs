@@ -36,3 +36,6 @@ jobs:
 
       - name: Run scenario tests
         run: bash scripts/test-upstream-intake.sh
+
+      - name: Run pin-lag tests
+        run: bash scripts/test-pin-lag.sh
