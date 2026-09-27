@@ -86,12 +86,29 @@ check_absent "older tag not counted" "v1.9.0" "$out"
 check_absent "built-in module skipped" "core" "$out"
 check "missing tags reported, not fatal" "wds v0.4.3: could not list upstream tags" "$out"
 check "summary counts externals" "1 of 3 external modules trail upstream" "$out"
+check "lag plus unknown names both" "lag unknown for 1 of 3 external modules" "$out"
 
 # All current: the all-clear summary.
 printf '%s\n' v1.24.0 > "$DIR/tags/tea.txt"
 printf '%s\n' v0.4.3 > "$DIR/tags/wds.txt"
 out="$(PIN_LAG_TAGS_DIR="$DIR/tags" bash "$SCRIPT" "$DIR/meta.yaml")"
 check "all current summary" "every external module is at its newest upstream tag" "$out"
+
+# Unknown lag with nothing lagging: must say unknown, never current.
+rm -f "$DIR/tags/wds.txt"
+out="$(PIN_LAG_TAGS_DIR="$DIR/tags" bash "$SCRIPT" "$DIR/meta.yaml")"
+check "unknown named in summary" "lag unknown for 1 of 3 external modules" "$out"
+check_absent "unknown is not all-clear" "every external module is at its newest" "$out"
+check_absent "unknown is not lagging" "trail upstream" "$out"
+
+# Network unreachable: no seam, so the real git ls-remote path runs
+# against a closed local port and fails. Every module is unknown.
+sed 's#https://example.invalid/#https://127.0.0.1:9/#' "$DIR/meta.yaml" > "$DIR/meta-offline.yaml"
+out="$(GIT_TERMINAL_PROMPT=0 bash "$SCRIPT" "$DIR/meta-offline.yaml")"
+rc=$?
+check_eq "offline still exits 0" "0" "$rc"
+check "offline: every module unknown" "lag unknown for 3 of 3 external modules" "$out"
+check_absent "offline is not all-clear" "every external module is at its newest" "$out"
 
 # Usage errors are the only nonzero exits.
 bash "$SCRIPT" "$DIR/nope.yaml" >/dev/null 2>&1

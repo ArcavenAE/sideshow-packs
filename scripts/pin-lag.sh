@@ -54,6 +54,7 @@ strictly_newer() { [[ "$1" != "$2" && "$(printf '%s\n' "$1" "$2" | sort -V | tai
 n="$(yq '.composition.modules_from_manifest | length' "${META}")"
 externals=0
 lagging=0
+unknown=0
 for ((i = 0; i < n; i++)); do
     src="$(yq -r ".composition.modules_from_manifest[$i].source" "${META}")"
     [[ "${src}" == "external" ]] || continue
@@ -64,6 +65,7 @@ for ((i = 0; i < n; i++)); do
 
     tags="$(list_tags "${name}" "${repo}" | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' || true)"
     if [[ -z "${tags}" ]]; then
+        unknown=$((unknown + 1))
         echo "  ${name} ${pinned}: could not list upstream tags (${repo:-no repoUrl}); lag unknown"
         continue
     fi
@@ -81,12 +83,19 @@ for ((i = 0; i < n; i++)); do
     fi
 done
 
+# An unknown lag is never reported as current: the all-clear line needs
+# every external module checked.
 if ((externals == 0)); then
     echo "[pin-lag] no external modules recorded; nothing to compare"
-elif ((lagging == 0)); then
+elif ((lagging == 0 && unknown == 0)); then
     echo "[pin-lag] every external module is at its newest upstream tag"
 else
-    echo "[pin-lag] ${lagging} of ${externals} external modules trail upstream. The pack carries none"
-    echo "[pin-lag] of those newer releases, including any fixes they contain; a native install would."
+    if ((lagging > 0)); then
+        echo "[pin-lag] ${lagging} of ${externals} external modules trail upstream. The pack carries none"
+        echo "[pin-lag] of those newer releases, including any fixes they contain; a native install would."
+    fi
+    if ((unknown > 0)); then
+        echo "[pin-lag] lag unknown for ${unknown} of ${externals} external modules: upstream tags could not be listed."
+    fi
 fi
 exit 0
