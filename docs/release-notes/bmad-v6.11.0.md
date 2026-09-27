@@ -37,6 +37,12 @@ verified:
 | bmb | v2.1.0 | external |
 | wds | v0.4.3 | external |
 
+The as-of date is the upstream npm publish date, and it fixes the
+composition: a module release after that date, including any fix it carries,
+is not in this pack, while a native install of the same bmad version resolves
+the newest stable module at install time. `scripts/pin-lag.sh
+install.meta.yaml` reports the current gap per module.
+
 The file census is 2025 files, +43 (2%) against 6.10.0 — consistent with a
 release that removes several skills and adds the `render/` snapshot tree.
 

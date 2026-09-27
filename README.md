@@ -42,6 +42,13 @@ version and extend the bracket with evidence. The register tracks
 upstream packaging wrinkles; published-artifact defects are the
 separate known-defects registry (`aae-orc-ztg5`).
 
+## Pin lag
+
+External modules are pinned to the newest tag published on or before the
+upstream release date, so a pack never picks up a module release that came
+after it. `scripts/pin-lag.sh <install.meta.yaml>` lists, per module, the
+upstream tags newer than the pin. It reports and exits 0; it does not gate.
+
 ## What this produces
 
 For each pack version, the pipeline emits:
