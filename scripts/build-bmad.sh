@@ -252,7 +252,7 @@ cat > "${PACK_STAGE}/pack.yaml" <<YAML
 # See: sideshow/docs/consumer-repo-convention.md (aae-orc-794h).
 name: bmad
 version: ${BMAD_VERSION}
-schema_version: 0.1.0
+schema_version: 0.2.0
 
 distribute:
   # Customization bridge (bmad 6.4+ reads _bmad/custom/ at runtime).
@@ -295,6 +295,31 @@ distribute:
     # is per-person, config.toml is team-committed).
     - /_bmad-custom/config.user.toml
 YAML
+
+# 3c. Composition disclosure in pack.yaml (schema 0.2.0, aae-orc-soh8q).
+# External modules are pinned as of the upstream release date, so module
+# releases after it (fixes included) never reach this pack. install.meta
+# records that, but it ships beside the tarball, not inside it; this block
+# lets an installed pack tell its user. Read from the installer's own
+# manifest, and written before file-manifest.csv so the hash covers it.
+# verify-artifact.sh checks it against install.meta.
+STAGE_MANIFEST="${PACK_STAGE}/_config/manifest.yaml"
+if [[ ! -f "${STAGE_MANIFEST}" ]]; then
+    echo "[build-bmad] FATAL: expected manifest at ${STAGE_MANIFEST}"
+    exit 1
+fi
+{
+    echo ""
+    echo "composition:"
+    echo "  pin_policy: ${PIN_POLICY}"
+    if [[ -n "${AS_OF_DATE}" ]]; then
+        echo "  as_of_date: \"${AS_OF_DATE}\""
+    else
+        echo "  as_of_date: null"
+    fi
+    echo "  external_modules:"
+    yq -r '.modules[] | select(.source == "external") | "    - name: " + .name + "\n      version: " + .version' "${STAGE_MANIFEST}"
+} >> "${PACK_STAGE}/pack.yaml"
 
 # 4. Emit file-manifest.csv (sha256,size,relpath).
 echo "[build-bmad] computing file manifest"
