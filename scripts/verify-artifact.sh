@@ -108,6 +108,37 @@ if [[ -n "${TARBALL}" ]]; then
         [[ "${PV}" == "${VERSION}" ]] \
             && ok "pack.yaml version matches (${PV})" \
             || bad "pack.yaml says ${PV}, install.meta says ${VERSION}"
+
+        # Composition disclosure (aae-orc-soh8q). When install.meta records a
+        # pin policy, the pack itself must say so, so an installed pack can
+        # tell its user it is pinned and as of when. The block must agree
+        # with install.meta, not merely exist.
+        META_POLICY="$(yq -r '.composition.pin_policy // ""' "${META}")"
+        if [[ -n "${META_POLICY}" ]]; then
+            PYC="$(tar -xzOf "${TARBALL}" "${PY}")"
+            P_POLICY="$(yq -r '.composition.pin_policy // ""' <<< "${PYC}")"
+            if [[ -z "${P_POLICY}" ]]; then
+                bad "pack.yaml has no composition block; install.meta records pin_policy ${META_POLICY}"
+            else
+                [[ "${P_POLICY}" == "${META_POLICY}" ]] \
+                    && ok "pack.yaml pin_policy matches (${P_POLICY})" \
+                    || bad "pack.yaml pin_policy ${P_POLICY}, install.meta says ${META_POLICY}"
+                M_ASOF="$(yq -r '.composition.as_of_date // ""' "${META}")"
+                P_ASOF="$(yq -r '.composition.as_of_date // ""' <<< "${PYC}")"
+                [[ "${P_ASOF}" == "${M_ASOF}" ]] \
+                    && ok "pack.yaml as_of_date matches (${P_ASOF:-none})" \
+                    || bad "pack.yaml as_of_date ${P_ASOF:-none}, install.meta says ${M_ASOF:-none}"
+                M_EXT="$(yq -r '.composition.modules_from_manifest[] | select(.source == "external") | .name + "=" + .version' "${META}" | sort)"
+                P_EXT="$(yq -r '.composition.external_modules[] | .name + "=" + .version' <<< "${PYC}" | sort)"
+                [[ "${P_EXT}" == "${M_EXT}" ]] \
+                    && ok "pack.yaml external modules match install.meta ($(wc -l <<< "${M_EXT}" | tr -d ' '))" \
+                    || bad "pack.yaml external modules [$(tr '\n' ' ' <<< "${P_EXT}")] differ from install.meta [$(tr '\n' ' ' <<< "${M_EXT}")]"
+                PSV="$(yq -r '.schema_version // ""' <<< "${PYC}")"
+                [[ "${PSV}" == "0.2.0" ]] \
+                    && ok "pack.yaml schema_version ${PSV}" \
+                    || bad "pack.yaml carries a composition block under schema_version ${PSV:-none}; expected 0.2.0"
+            fi
+        fi
     else
         bad "no pack.yaml inside the tarball"
     fi
