@@ -1,0 +1,29 @@
+id: question-local-build-toolchain-pin
+type: question
+confidence: frontier
+title: "Should sideshow-packs pin its build toolchain (node) in the repo so a local build matches CI?"
+tags:
+  - sideshow-packs
+  - build
+content: |
+  finding-001: on a mise host with no node selected, a local
+  build-bmad.sh stops before the upstream installer runs; CI never sees
+  it because setup-node pins node 24 (build-pack.yml:74). The workaround
+  is one command, `mise exec node@24.18.0 -- ...`.
+
+  A local build is the pre-release check (the -r2 build-ahead,
+  aae-orc-jxaij, ran one), so a local run that differs from CI in its
+  toolchain weakens the check it exists to make.
+
+  Options, not decided:
+  - pin node in the repo (mise.toml or .node-version, 24) to match CI;
+  - keep the repo toolchain-neutral and document the workaround;
+  - have build-bmad.sh refuse a node major that differs from CI's.
+
+  Also open: whether one pin should drive both CI and local (setup-node
+  can read .node-version), so the two cannot drift.
+edges: []
+provenance:
+  created_by: agent
+  session: 2026-09-27-arcaven-sideshow-builder-kos-harvest
+  created_at: "2026-09-27"
