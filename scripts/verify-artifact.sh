@@ -146,6 +146,32 @@ else
     note "info" "no tarball in ${DIR} (unsigned test build keeps it as a workflow artifact)"
 fi
 
+# ---- 5. file-manifest.csv travels inside the tarball ----------------------
+# The sibling asset is gone from the machine once a pack is extracted, so
+# nothing could re-verify an installed store version (aae-orc-xorml). The
+# in-tarball copy is covered by the tarball's signature. It must be the
+# same bytes as the sibling, must not list itself, and must list every
+# other regular file the tarball carries.
+if [[ -n "${TARBALL}" ]]; then
+    IN_MANIFEST="$(tar -tzf "${TARBALL}" | grep -m1 -E '^[^/]+/file-manifest\.csv$' || true)"
+    if [[ -z "${IN_MANIFEST}" ]]; then
+        bad "tarball carries no file-manifest.csv; installed content cannot be re-verified"
+    else
+        # diff reads both inputs to the end; cmp -s stops at the first
+        # difference and tar then reports a broken pipe.
+        diff -q <(tar -xzOf "${TARBALL}" "${IN_MANIFEST}") "${MANIFEST}" >/dev/null \
+            && ok "in-tarball file-manifest.csv matches the release asset" \
+            || bad "in-tarball file-manifest.csv differs from the release asset"
+        if grep -q -E ',file-manifest\.csv$' "${MANIFEST}"; then
+            bad "file-manifest.csv lists itself; its own hash cannot be recorded inside it"
+        fi
+        TAR_FILES="$(tar -tvzf "${TARBALL}" | grep -c '^-' || true)"
+        [[ "${TAR_FILES}" == "$(( COUNT + 1 ))" ]] \
+            && ok "tarball carries ${TAR_FILES} files: the ${COUNT} listed plus the manifest" \
+            || bad "tarball carries ${TAR_FILES} files; expected ${COUNT} listed plus the manifest"
+    fi
+fi
+
 echo
 if (( fail )); then
     echo "RESULT: FAILED — do not extend the bracket or publish"

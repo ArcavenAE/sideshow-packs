@@ -389,6 +389,13 @@ if [[ "${REQUESTED_PINS_JSON}" != "{}" ]]; then
     echo "[build-bmad] pins verified"
 fi
 
+# 5c. Carry file-manifest.csv inside the pack (aae-orc-xorml). The
+# sibling asset does not survive extraction, so without this copy an
+# installed store version has nothing to re-verify against. Written after
+# the hash pass so the manifest never lists itself; the tarball
+# signature covers it. Nothing else may write into PACK_STAGE after this.
+cp "${OUT_DIR}/file-manifest.csv" "${PACK_STAGE}/file-manifest.csv"
+
 # 6. Build the tarball (tar from pack stage, gzip). A packaging
 # re-issue carries its revision in the artifact name so the two
 # issues can never be confused in a download cache; the in-tarball
