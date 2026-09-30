@@ -309,6 +309,10 @@ FILE_COUNT=$(wc -l < "${OUT_DIR}/file-manifest.csv" | tr -d ' ')
     find . -type f -perm -0100 | sed 's|^\./||' | LC_ALL=C sort
 ) > "${OUT_DIR}/exec-manifest.txt"
 
+# 5b. Carry file-manifest.csv inside the pack (aae-orc-xorml), after the
+# hash pass so it never lists itself; same contract as build-bmad.sh.
+cp "${OUT_DIR}/file-manifest.csv" "${PACK_STAGE}/file-manifest.csv"
+
 # 6. Tarball.
 TARBALL="${OUT_DIR}/vsdd-factory-${VSDD_VERSION}-arcaven.tar.gz"
 echo "[build-vsdd] packaging -> ${TARBALL}"

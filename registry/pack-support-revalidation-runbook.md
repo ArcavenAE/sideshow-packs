@@ -84,6 +84,21 @@ Download the workflow artifact and check:
    6.2.2→6.3.0 was 2600+ file ops; 6.4→6.5 was ~stable).
 3. `pack.yaml` inside the tarball — present, correct version,
    `custom_bridge`/gitignore sections intact.
+4. `file-manifest.csv` inside the tarball: the same bytes as the
+   sibling asset, not listing itself, and the tarball carrying exactly
+   the listed files plus the manifest.
+
+The command form of this step is
+`scripts/verify-artifact.sh <artifact-dir> [<previous-file-manifest.csv>]`.
+CI does not run it; run it by hand here.
+
+Releases published before the in-tarball manifest (aae-orc-xorml) carry
+no `file-manifest.csv` inside the tarball, so re-verifying one reports
+`FAIL tarball carries no file-manifest.csv`. For those releases that
+line is expected, and it does not by itself block a re-verification;
+every other FAIL still does. A release without the file cannot be
+re-verified after install, which is why the check stays a hard FAIL
+with no switch.
 
 ## Step 4 — Update the register (this is the deliverable)
 
