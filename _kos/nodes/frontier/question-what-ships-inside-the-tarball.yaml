@@ -1,0 +1,31 @@
+id: question-what-ships-inside-the-tarball
+type: question
+confidence: frontier
+title: "Which build outputs must travel inside the signed tarball, and how is that checked?"
+tags:
+  - sideshow-packs
+  - provenance
+content: |
+  finding-002: a build output written only beside the tarball never
+  reaches the installing machine. file-manifest.csv now travels inside
+  (#40); exec-manifest.txt does not, so sideshow's install-time exec-bit
+  check is silently off for a tarball install.
+
+  finding-003: verify-artifact.sh, which asserts the artifact contract,
+  runs by hand only; the runbook now says so (85fd4c4).
+
+  finding-004: the identity neutralization edits nine config files after
+  bmad records them in its own census, so a clean r2 install fails
+  doctor's census (#41).
+
+  Open:
+  - Should every output that an installer may check (exec manifest,
+    install.meta facts) travel inside the tarball?
+  - Should CI run the structural checks in verify-artifact.sh?
+  - Should any step that edits staged content after the upstream
+    installer refresh the upstream census it invalidates?
+edges: []
+provenance:
+  created_by: agent
+  session: 2026-10-02-sideshow-builder-harvest
+  created_at: "2026-10-02"
