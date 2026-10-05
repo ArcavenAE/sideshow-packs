@@ -48,7 +48,7 @@ After round 2 the panel had counted five faults, with F-i, F-j and F-k found but
 |---|---|---|
 | edited bound skill (the bound-skill path; sideshow#90's rules path was not measured) | append to a bound `SKILL.md`, `commands sync`, grep | edit gone; native `install --action update` also drops it. Parity holds for bound skills; says nothing about #90 |
 | party roster (sideshow#121) | `resolve_party.py` bound vs native | byte-identical JSON, 20 members. Not reproducible on 6.12.1; 6.10.0 untested |
-| `enable` for bmad (sideshow#111) | `sideshow enable bmad@6.12.0` | exit 1, "not a plugin-layout tree"; bmad has no enable path by design. bmad users never reach #111's path; the issue itself was not tested |
+| `enable` for bmad (sideshow#111), fixed by sideshow#134 | `sideshow enable bmad@6.12.1` and `bmad@6.12.0`, with only 6.12.1 installed | `enable bmad@<installed version>` reaches the layout check and is refused as not a plugin-layout tree. Version resolution, #111's path, runs first (`resolveStore`, `internal/enable/enable.go:92`, before `DiscoverPluginLayout` at `:100`) and was changed by sideshow#134 (1725c12). A version not installed gives "is not installed". The issue's reported case was not re-tested |
 | render write target | `render_skill.py` for `bmad-build`, native and bound | both HALT with "ambiguous config value implementation_artifacts" when bmm and gds are both installed. Upstream defect; parity holds |
 | residual home-dir sites | read the three call sites | data dir default and `~` expansion are correct; only `permissions.go:33` is a fault (F-g) |
 | dangling skill-manifest paths | `test -e` on the first three | dangling in native too |
