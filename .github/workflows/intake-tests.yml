@@ -39,3 +39,6 @@ jobs:
 
       - name: Run pin-lag tests
         run: bash scripts/test-pin-lag.sh
+
+      - name: Run bmad census tests
+        run: bash scripts/test-bmad-census.sh
