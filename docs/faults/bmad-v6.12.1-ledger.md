@@ -40,10 +40,10 @@ Eight counted. F-i carries a recorded dissent (runtime seat: native has no docto
 
 | Candidate | Command | Why not a fault |
 |---|---|---|
-| sideshow#90 (edited bound skill lost on sync) | append to a bound `SKILL.md`, sync; same edit on native, `install --action update` | Native drops the edit too; it preserves only `_bmad/custom` |
+| Edited bound skill lost on sync (the bound-skill path only; sideshow#90 is about rules distribution, which was not measured) | append to a bound `SKILL.md`, sync; same edit on native, `install --action update` | Native drops the edit too; it preserves only `_bmad/custom`. Says nothing about sideshow#90's rules path |
 | sideshow#121 (party roster) | `resolve_party.py` in a bound repo and in native | Byte-identical output, 20 members, all resolved |
-| sideshow#111 (enable a non-active version) | `sideshow enable bmad@6.12.0` | "not installed" no longer reproduces; bmad has no enable path by design |
-| sideshow#18, #132 | install from a built dir; layout inspection | version read from `pack.yaml`; the two-file layout does not exist in our packs |
+| sideshow#111 (enable a non-active version), out of bmad scope | `sideshow enable bmad@6.12.0` | bmad is refused as "not a plugin-layout tree" before any version handling, on every version. bmad users never reach #111's path; the issue itself, about plugin-layout packs, was not tested |
+| sideshow#18, #132, for packs this repo builds | install from a built dir; layout inspection | version read from `pack.yaml`; the two-file layout does not exist in our packs. #18's reported case, a raw upstream checkout with no `pack.yaml`, was not tested and may still hold |
 | sideshow#136 on the bindings path | `CLAUDE_CONFIG_DIR` install | skills bind correctly; the residue is F-g |
 | `_bmad/custom/config.toml` absent | native file content | native file holds only comments; resolved config unchanged |
 | `_config/skill-manifest.csv` dangling paths | `test -e` on native | dangling in native too |
