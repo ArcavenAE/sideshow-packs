@@ -22,7 +22,7 @@ Oracle: `bmad-method@6.12.1`, modules `bmm,cis,gds,tea,bmb,wds` (the register's 
 | F-g | Read permission written outside `CLAUDE_CONFIG_DIR` | With `CLAUDE_CONFIG_DIR=$C`: skills bind to `$C/skills` (102), the rule lands in `$HOME/.claude/settings.json` | `test -f "$C/settings.json"` after install | aae-orc-89cxz | | open |
 | F-i | Doctor says a bound repo has no sideshow content | In a repo where `project init bmad` ran and `status` lists it, `doctor --repo .` warns `cwd-known: ... an agent started here finds no sideshow-managed content` and recommends `enable`, which refuses bmad | cwd-known status is warn in a bound repo | aae-orc-edg8t | | open; counted 4 to 1 |
 | F-j | The Read rule install writes matches nothing | Native needs no rule. Observed with `claude -p` and a `--settings` file: the written form `Read(<abs>/packs/)` is denied exactly like no rule; `Read(//<abs>/...)` is allowed; a control read inside the project passes in every variant | written rule does not start with `Read(//` (or `Read(~/`) | aae-orc-8qmpi (needs aae-orc-89cxz) | | open |
-| F-k | User-scope pack skills shadow a repo's own native install; preflight says clean | Copy of the native install committed as a repo: `coexist-check` exits 0 "all checks clean" with 102 names in both scopes. Observed read-only in a private repo with a native 6.2.2 install: the session loaded the user-scope sideshow 6.10.0 `bmad-help` | `sideshow coexist-check bmad --repo .` exits 0 in that repo | aae-orc-phytt (detection); placement is a pending ruling | | open |
+| F-k | User-scope pack skills shadow a repo's own native install; preflight says clean | Copy of the native install committed as a repo: `coexist-check` exits 0 "all checks clean" with 102 names in both scopes. Observed read-only in a private repo with a native 6.2.2 install: the session loaded the user-scope sideshow 6.10.0 `bmad-help` | `sideshow coexist-check bmad --repo .` exits 0 in that repo | aae-orc-phytt; ruled 2026-10-05: keep user scope, coexist-check names every collision and the loaded copy | | open |
 
 Eight counted. F-i carries a recorded dissent (runtime seat: native has no doctor to compare, and it blocks no skill).
 
@@ -33,6 +33,8 @@ Eight counted. F-i carries a recorded dissent (runtime seat: native has no docto
 | Build refuses 6.12.1 | `build-bmad.sh` with `BMAD_VERSION=6.12.1` exits 2 in check-support; validated `max: 6.12.0` | aae-orc-y49j2 |
 | Local build default is four modules | `build-bmad.sh:53` vs register `default_modules`; CI already reads the register | aae-orc-lw82d |
 | Publish 6.12.1 | needs the four pack tickets above | aae-orc-ln72i |
+| V1: published pack against native on skippy@corporate | after the publish | aae-orc-iz41j |
+| V2: install on each marvel cluster | after V1; waits on the operator saying ready | aae-orc-20x90 |
 
 ## Ruled out on evidence
 

@@ -79,6 +79,8 @@ Flat tickets, one repo each. Edges are recorded in bd.
 | aae-orc-ytwiv | derive `runtime_links` from the staged top-level module dirs, excluding `custom` and `render` | `test -e _bmad/wds/config.yaml` in a bound repo exits 1 |
 | aae-orc-lw82d | read the local build default from the register | default build ships 82 skills |
 | aae-orc-ln72i | publish 6.12.1 through the signed path; blocked by the four above | (reachability below) |
+| aae-orc-iz41j | V1: verify the published pack against native on skippy@corporate; blocked by the publish | |
+| aae-orc-20x90 | V2: install on each marvel cluster; blocked by V1; waits on the operator saying ready | |
 
 **Following sideshow alpha (no pack bytes change):**
 
@@ -88,7 +90,7 @@ Flat tickets, one repo each. Edges are recorded in bd.
 | aae-orc-zfkxy | status prints an unwired line when synced is below available | |
 | aae-orc-89cxz | permission settings path through `foreign.ConfigDir()` | |
 | aae-orc-8qmpi | write absolute Read rules with the `//` anchor | aae-orc-89cxz |
-| aae-orc-phytt | coexist-check reports skills shadowed between project and user scope | |
+| aae-orc-phytt | coexist-check names every skill shadowed between project and user scope and which copy the harness loads (ruled: F-k option iii) | |
 | aae-orc-edg8t | doctor cwd-known counts `project init` registrations | |
 | aae-orc-psih9 | doctor prints the declared rewrite record as info, never as an exemption | aae-orc-hu9z2 |
 | aae-orc-k5vro | rewrite every text file under a bound skill, not only markdown | |
@@ -103,15 +105,24 @@ Flat tickets, one repo each. Edges are recorded in bd.
 - **F-d shape (3 to 2).** Derived links gate the release; widening the rewrite follows in the alpha, counted once, and must not change bytes the parity comparison checks beyond the declared rewrite. Dissent (distribution, runtime): links alone remove the divergence, and widening the rewrite adds divergence.
 - **F-i counts (4 to 1).** Dissent (runtime): native has no doctor to compare against, and the fault blocks no skill.
 
-## Pending ruling
+## Ruled: F-k placement
 
-**Where skills go when a repo has its own native install (F-k).** The panel split 3 to 2:
+**Where skills go when a repo has its own native install.** The panel split 3 to 2 among three options:
 
 1. Project-scope binding. Personal outranks project, so this works only if the user-scope binding is also removed or narrowed, which changes what a user-wide install means.
 2. Refuse to bind. A user-scope binding is machine-wide, so refusing in one repo unbinds nothing.
-3. Keep user scope and warn (aae-orc-phytt).
+3. Keep user scope and warn.
 
-Recommended default: 3 now, as the floor; it ships under any ruling. The ruling on 1 is the operator's. This recommendation is valid until the 6.12.1 release build starts; it will be re-checked then.
+**Operator ruling, 2026-10-05 (relayed by director):** "F-k go with iii". Sideshow keeps user scope. `coexist-check` names every skill that collides between a repo's own `.claude/skills` and the user-scope bindings, and which copy the harness loads. It ships in the sideshow alpha as aae-orc-phytt, the one ticket that carries F-k. Option 1 is not taken.
+
+## Verification after publish
+
+Two steps after aae-orc-ln72i publishes 6.12.1. Each reuses the comparison battery in Method.
+
+- **V1, clean-environment check on skippy@corporate (aae-orc-iz41j).** Install the published pack on skippy@corporate and compare it against a native 6.12.1 install in a scratch project there, with comparisons 1 to 7. Blocked by the publish.
+- **V2, each marvel cluster (aae-orc-20x90).** Install on each marvel cluster: kinu, skippy/mokuzai, and corporate. This waits on the operator saying ready, and nothing is installed on the other clusters before that word. Blocked by V1.
+
+Operator ruling, 2026-10-05 (relayed by director): "skippy@corporate is a good clean environment for testing bmad sideshow package installs, but we'll want to get an install going on each marvel cluster when we're ready for that".
 
 ## Candidate requirements (provisional, not ratified)
 
