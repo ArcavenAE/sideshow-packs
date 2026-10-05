@@ -53,6 +53,13 @@ check_eq "absent config.user.toml is skipped" "_config bmm core scripts config.t
 B3="$DIR/b3"; mkdir -p "$B3/bmm"
 python3 "$LINKS" --bmad-dir "$B3" >/dev/null 2>&1; rc=$?
 check_eq "missing scripts/_config is fatal (exit)" "2" "$rc"
+# Either directory missing alone is also fatal (guards the `or` in the check).
+B4="$DIR/b4"; mkdir -p "$B4"/{scripts,bmm}
+python3 "$LINKS" --bmad-dir "$B4" >/dev/null 2>&1; rc=$?
+check_eq "missing _config alone is fatal (exit)" "2" "$rc"
+B5="$DIR/b5"; mkdir -p "$B5"/{_config,bmm}
+python3 "$LINKS" --bmad-dir "$B5" >/dev/null 2>&1; rc=$?
+check_eq "missing scripts alone is fatal (exit)" "2" "$rc"
 python3 "$LINKS" --bmad-dir "$DIR/nope" >/dev/null 2>&1; rc=$?
 check_eq "missing dir is fatal (exit)" "1" "$rc"
 

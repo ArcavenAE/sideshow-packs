@@ -5,8 +5,9 @@ sideshow links each entry from {project-root}/_bmad/<link> to the store copy,
 so an upstream resolver or skill that reads a path under _bmad/ finds it from a
 bound repo. The list was a hand list of four (scripts, _config, config.toml,
 config.user.toml), which left every module config unresolved: a bound repo
-could not read _bmad/wds/config.yaml although native resolves it (F-d,
-sideshow-packs#43).
+could not read _bmad/wds/config.yaml, a file the installer's own tree
+holds (F-d, sideshow-packs#43). The comparison against a native install was
+not run for this change; only the installer tree was checked.
 
 The list is now derived from the installer's own _bmad/ tree: every top-level
 directory, minus the two that must not be linked, plus the two top-level
