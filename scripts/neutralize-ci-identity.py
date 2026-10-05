@@ -34,6 +34,11 @@ import re
 import sys
 from pathlib import Path
 
+# Version of the scrub rule, recorded in the in-store pack.yaml next to the
+# census rows the build refreshed. Bump it when the rule changes what it
+# rewrites. `--rule-version` prints it so build-bmad.sh does not copy it.
+NEUTRALIZER_RULE_VERSION = 1
+
 # Config files the installer writes identity answers into. Matched by exact
 # base name anywhere in the staged tree (top-level config.toml /
 # config.user.toml plus every module's config.yaml).
@@ -62,6 +67,9 @@ def scrub_file(path: Path):
 
 
 def main():
+    if "--rule-version" in sys.argv[1:]:
+        print(NEUTRALIZER_RULE_VERSION)
+        return 0
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--pack-stage", required=True,

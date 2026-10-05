@@ -245,6 +245,17 @@ python3 "${SCRIPT_DIR}/neutralize-ci-identity.py" \
     --pack-stage "${PACK_STAGE}" \
     --sentinel-user "${CI_USER_SENTINEL}"
 
+# 3a'. Refresh bmad's own census (_config/files-manifest.csv) for the files
+# the neutralizer just edited, so a clean install passes sideshow's
+# store-content-census (sideshow-packs#41). Records each rewrite, with the hash
+# the installer wrote, for the in-store pack.yaml (install.meta is a release
+# asset and never reaches the store).
+CENSUS_RECORD="${WORK}/census-rewrites.yaml"
+python3 "${SCRIPT_DIR}/bmad-census.py" refresh \
+    --pack-stage "${PACK_STAGE}" \
+    --record "${CENSUS_RECORD}" \
+    --rule-version "$(python3 "${SCRIPT_DIR}/neutralize-ci-identity.py" --rule-version)"
+
 # 3b. Emit pack.yaml inside the pack (consumed by sideshow's distribute
 # layer for consumer-repo convention enforcement — aae-orc-794h).
 cat > "${PACK_STAGE}/pack.yaml" <<YAML
@@ -320,6 +331,11 @@ fi
     echo "  external_modules:"
     yq -r '.modules[] | select(.source == "external") | "    - name: " + .name + "\n      version: " + .version' "${STAGE_MANIFEST}"
 } >> "${PACK_STAGE}/pack.yaml"
+cat "${CENSUS_RECORD}" >> "${PACK_STAGE}/pack.yaml"
+
+# 3d. Re-run the census over the final staged tree and fail closed on any
+# mismatch, so an edit made after the refresh cannot ship a failing census.
+python3 "${SCRIPT_DIR}/bmad-census.py" verify --pack-stage "${PACK_STAGE}"
 
 # 4. Emit file-manifest.csv (sha256,size,relpath).
 echo "[build-bmad] computing file manifest"
