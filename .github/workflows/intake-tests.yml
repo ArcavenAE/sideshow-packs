@@ -45,3 +45,6 @@ jobs:
 
       - name: Run bmad runtime-links tests
         run: bash scripts/test-bmad-runtime-links.sh
+
+      - name: Run bmad default-modules tests
+        run: bash scripts/test-bmad-default-modules.sh
