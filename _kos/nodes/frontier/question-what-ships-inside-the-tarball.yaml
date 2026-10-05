@@ -18,6 +18,13 @@ content: |
   bmad records them in its own census, so a clean r2 install fails
   doctor's census (#41).
 
+  finding-005: the 4ptdd panel checked where a rewrite record can live.
+  install.meta is a release asset only, absent from the tarball and the
+  store, so any record doctor reads at runtime must sit in the in-store
+  pack.yaml. The panel accepted 5 to 0 that the build refreshes the
+  census after the neutralizer, re-runs it on the staged tree, and
+  records the rewrites there (sideshow-packs#44).
+
   Open:
   - Should every output that an installer may check (exec manifest,
     install.meta facts) travel inside the tarball?
