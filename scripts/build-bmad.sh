@@ -256,6 +256,9 @@ python3 "${SCRIPT_DIR}/bmad-census.py" refresh \
     --record "${CENSUS_RECORD}" \
     --rule-version "$(python3 "${SCRIPT_DIR}/neutralize-ci-identity.py" --rule-version)"
 
+# 3b'. Derive the runtime links from the installer's own tree (F-d).
+RUNTIME_LINKS="$(python3 "${SCRIPT_DIR}/bmad-runtime-links.py" --bmad-dir "${INSTALL_ROOT}/_bmad")"
+
 # 3b. Emit pack.yaml inside the pack (consumed by sideshow's distribute
 # layer for consumer-repo convention enforcement — aae-orc-794h).
 cat > "${PACK_STAGE}/pack.yaml" <<YAML
@@ -275,19 +278,13 @@ distribute:
   custom_bridge:
     upstream_path: _bmad/custom
     per_repo_dir: _bmad-custom
-  # Runtime read surfaces upstream resolvers expect at {project-root}/_bmad/
-  # (resolve_config's four-file chain + scripts). Enumerated deliberately;
-  # the reference scanner (sideshow-packs#2) proposes additions per
-  # version. See sideshow#52 / aae-orc finding-074.
+  # Runtime read surfaces upstream resolvers expect at {project-root}/_bmad/:
+  # every top-level module dir the installer wrote, plus the two config
+  # files, derived at build time (scripts/bmad-runtime-links.py). custom is
+  # bridged and render must stay writable, so neither is linked. See
+  # sideshow#52 / aae-orc finding-074 and sideshow-packs#43 (F-d).
   runtime_links:
-    - link: scripts
-      target: scripts
-    - link: _config
-      target: _config
-    - link: config.toml
-      target: config.toml
-    - link: config.user.toml
-      target: config.user.toml
+${RUNTIME_LINKS}
   gitignore:
     # Pack content — sideshow installs to user-scope; project-local copies
     # are redundant and conflict with multi-user sideshow installs.
