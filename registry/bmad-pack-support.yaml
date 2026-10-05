@@ -92,9 +92,14 @@ pipeline_assumptions:
 
 validated:
   - min: 6.3.0
-    max: 6.12.0   # inclusive
-    validated_at: "2026-09-08"
+    max: 6.12.1   # inclusive
+    validated_at: "2026-10-05"
     method: >-
+      Extended to 6.12.1 on 2026-10-05 (aae-orc-y49j2): v6.12.0..v6.12.1
+      installer source diff against all six assumptions, a local test build
+      with ALLOW_UNSUPPORTED=1 (no publish, no signing; not a CI run), and
+      artifact verification via scripts/verify-artifact.sh against a local
+      6.12.0 build of the same pipeline.
       per-transition installer source diff across all 9 stable tags +
       9-rung build ladder (sign=false publish=false), pin composition
       verified per rung. Extended to 6.11.0 on 2026-08-28: v6.10.0..v6.11.0
@@ -106,6 +111,10 @@ validated:
       - "6.12.0 run 34284724143 (test build, success, expected_sha 05bfbd46d00766ec88eb9b42e76be2c575d64d7b)"
       - "6.12.0 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2023 files, -2 vs 6.11.0; every external module carries a resolved sha; pack.yaml coherent"
       - "6.12.0 census delta fully attributed: 86 removed / 84 added, every path assigned to one of four causes (32 files across 20 retired shim IDs dropped by the new opt-in default; checkpoint-preview renamed to walkthrough, 8 for 8; 5 __pycache__ artefacts newly filtered; gds v0.6.0->v0.7.2, tea v1.21.10->v1.24.0, cis v0.2.1->v0.3.2 pin advance). No unexplained path."
+      - "6.12.1 installer diff v6.12.0..v6.12.1: under tools/ only tools/installer/core/manifest-generator.js changed (+18 lines, user-scope defaults written to config.toml, upstream #3016); package.json differs by the version only, engines node >=20.12.0 unchanged; no file added, removed or renamed (36 files modified); all six pipeline_assumptions hold"
+      - "6.12.1 local test build (ALLOW_UNSUPPORTED=1, default modules read from this register, EXPECTED_UPSTREAM_SHA=790dae9c8e2a1d73575cb2d40b14dd4963391f29, which equals the tag commit; the build's upstream provenance check passed): pins cis v0.3.2, gds v0.7.2, tea v1.27.2, bmb v2.2.2, wds v0.4.3 resolved as of 2026-10-04T19:30:54Z; exit 0; not a CI run, not published"
+      - "6.12.1 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2023 files, delta 0 vs a local 6.12.0 build of the same pipeline; every external module carries a resolved sha; pack.yaml coherent; RESULT passed"
+      - "6.12.1 census delta fully attributed against that local 6.12.0 build: 0 paths added or removed; 412 files changed content at the same path = 380 tea skill files (tea pin v1.24.0 to v1.27.2, as-of date moved), 21 upstream 6.12.1 skill files (#3019 config via resolve_config.py, #3020 epics draft status, #3015 party-mode collision check), 11 generated (7 module config.yaml, config.toml, pack.yaml, _config/manifest.yaml, _config/files-manifest.csv). Census refresh: 9 rows refreshed and 74 verified in both builds. The neutralizer removed 17 identity lines against 16 (config.toml now carries user_name = \"BMad\" as a default)."
       - aae-orc:_kos/findings/finding-147-unoverridable-ci-default-decided-composition.md
       - aae-orc:_kos/findings/finding-070-bmad-upstream-prescan-and-module-pinning.md
       - aae-orc:_kos/findings/finding-071-bmad-packaging-ladder-results.md
@@ -441,6 +450,74 @@ wrinkles:
     adaptation: None. We build with --tools claude-code; claude-sibling holds.
     references:
       - tools/installer/ide/platform-codes.yaml
+
+  - id: user-scope-defaults-in-config-toml
+    introduced_in: 6.12.1
+    resolved_in: null
+    severity: adaptation-not-needed
+    summary: >-
+      The installer now writes the plain module.yaml defaults of user-scope
+      keys into the central config.toml (no placeholders, no result
+      transform), so a clone without config.user.toml still resolves them
+      (upstream #3016). In a 6.12.1 build config.toml carries
+      user_name = "BMad".
+    adaptation: >-
+      None. The CI identity neutralizer drops user_name and project_name by
+      key name, so it removed that line too (17 lines against 16 for 6.12.0;
+      the CI sentinel check still passed). Recorded because a native 6.12.1
+      install carries a user_name that the pack scrubs; that gap is fault F-c in
+      docs/faults/bmad-v6.12.1-ledger.md, tracked as aae-orc-jy1j, not a
+      packaging break.
+    references:
+      - tools/installer/core/manifest-generator.js (userDefaultsByModule)
+      - https://github.com/bmad-code-org/BMAD-METHOD/pull/3016
+
+  - id: skills-resolve-config-via-resolver
+    introduced_in: 6.12.1
+    resolved_in: null
+    severity: adaptation-not-needed
+    summary: >-
+      23 bmm skills, including the v6 shims, load config through
+      resolve_config.py instead of reading _bmad/bmm/config.yaml directly, so
+      overrides in _bmad/custom/config.toml and config.user.toml apply
+      everywhere (upstream #3019). In the default composition 15 installed
+      skill files change; the shims are not installed by default.
+    adaptation: >-
+      None to the pipeline. The pack-side rewrite of {project-root}/_bmad/
+      paths was not re-measured by this revalidation; the native-parity
+      comparison in docs/design/bmad-v6.12.1-native-parity.md covers it.
+    references:
+      - https://github.com/bmad-code-org/BMAD-METHOD/pull/3019
+
+  - id: content-only-fixes-6-12-1
+    introduced_in: 6.12.1
+    resolved_in: null
+    severity: adaptation-not-needed
+    summary: >-
+      Two skill-content fixes with no installer effect: bmad-create-epics-and-
+      stories writes status draft and keeps it when final validation fails
+      (upstream #3020), and bmad-party-mode's create-party collision check
+      sees aliases and custom-only codes via resolve_party.py --list-codes
+      (upstream #3015).
+    adaptation: None. Recorded so the changed skill bytes read as upstream content.
+    references:
+      - https://github.com/bmad-code-org/BMAD-METHOD/pull/3020
+      - https://github.com/bmad-code-org/BMAD-METHOD/pull/3015
+
+  - id: maintenance-branch-release-6-12
+    introduced_in: 6.12.1
+    resolved_in: null
+    severity: adaptation-not-needed
+    summary: >-
+      Upstream commit 9ee3dfd4 ("ci: publish 6.12 maintenance releases from
+      V6.12") shows 6.12.x patch releases now come from a V6.12 branch. The
+      v6.12.1 tag points at 790dae9c8e2a1d73575cb2d40b14dd4963391f29 and the
+      build's npm gitHead check matched it.
+    adaptation: >-
+      None. Recorded as a fact only; whether later patch tags stay reachable
+      from the default branch was not examined.
+    references:
+      - https://github.com/bmad-code-org/BMAD-METHOD/commit/9ee3dfd4
 
 # For versions OUTSIDE every validated bracket: check-support.sh points
 # here. An LLM (or human) follows this runbook to re-validate, then
