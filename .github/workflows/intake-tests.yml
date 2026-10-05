@@ -42,3 +42,6 @@ jobs:
 
       - name: Run bmad census tests
         run: bash scripts/test-bmad-census.sh
+
+      - name: Run bmad runtime-links tests
+        run: bash scripts/test-bmad-runtime-links.sh
