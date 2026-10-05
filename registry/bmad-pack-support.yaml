@@ -84,7 +84,9 @@ pipeline_assumptions:
   - id: manifest-shape
     desc: _bmad/_config/manifest.yaml exists with a .modules list
   - id: module-set
-    desc: modules bmm,cis,gds,tea valid; cis/gds/tea external (git-cloned)
+    desc: >-
+      modules bmm,cis,gds,tea,bmb,wds valid (the default_modules above);
+      cis/gds/tea/bmb/wds external (git-cloned)
   - id: claude-sibling
     desc: .claude/ emitted as sibling for claude-code tool bindings
   - id: node-engine
@@ -111,10 +113,11 @@ validated:
       - "6.12.0 run 34284724143 (test build, success, expected_sha 05bfbd46d00766ec88eb9b42e76be2c575d64d7b)"
       - "6.12.0 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2023 files, -2 vs 6.11.0; every external module carries a resolved sha; pack.yaml coherent"
       - "6.12.0 census delta fully attributed: 86 removed / 84 added, every path assigned to one of four causes (32 files across 20 retired shim IDs dropped by the new opt-in default; checkpoint-preview renamed to walkthrough, 8 for 8; 5 __pycache__ artefacts newly filtered; gds v0.6.0->v0.7.2, tea v1.21.10->v1.24.0, cis v0.2.1->v0.3.2 pin advance). No unexplained path."
+      - "6.12.1 release notes read (gh release view v6.12.1, published 2026-10-04T19:29:43Z); its four fixes map to upstream #3019, #3016, #3020 and #3015, each recorded as a wrinkle below. No finding is written for step 4.3: no pipeline assumption changed, and the evidence is in these rows and the wrinkles."
       - "6.12.1 installer diff v6.12.0..v6.12.1: under tools/ only tools/installer/core/manifest-generator.js changed (+18 lines, user-scope defaults written to config.toml, upstream #3016); package.json differs by the version only, engines node >=20.12.0 unchanged; no file added, removed or renamed (36 files modified); all six pipeline_assumptions hold"
       - "6.12.1 local test build (ALLOW_UNSUPPORTED=1, default modules read from this register, EXPECTED_UPSTREAM_SHA=790dae9c8e2a1d73575cb2d40b14dd4963391f29, which equals the tag commit; the build's upstream provenance check passed): pins cis v0.3.2, gds v0.7.2, tea v1.27.2, bmb v2.2.2, wds v0.4.3 resolved as of 2026-10-04T19:30:54Z; exit 0; not a CI run, not published"
       - "6.12.1 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2023 files, delta 0 vs a local 6.12.0 build of the same pipeline; every external module carries a resolved sha; pack.yaml coherent; RESULT passed"
-      - "6.12.1 census delta fully attributed against that local 6.12.0 build: 0 paths added or removed; 412 files changed content at the same path = 380 tea skill files (tea pin v1.24.0 to v1.27.2, as-of date moved), 21 upstream 6.12.1 skill files (#3019 config via resolve_config.py, #3020 epics draft status, #3015 party-mode collision check), 11 generated (7 module config.yaml, config.toml, pack.yaml, _config/manifest.yaml, _config/files-manifest.csv). Census refresh: 9 rows refreshed and 74 verified in both builds. The neutralizer removed 17 identity lines against 16 (config.toml now carries user_name = \"BMad\" as a default)."
+      - "6.12.1 census delta fully attributed against that local 6.12.0 build: 0 paths added or removed; 412 files changed content at the same path = 380 tea skill files (tea pin v1.24.0 to v1.27.2, as-of date moved), 21 upstream 6.12.1 skill files = 16 for #3019 (config via resolve_config.py; 23 files upstream, 7 of them v6 shims that are not installed) + 2 for #3020 (epics draft status) + 3 for #3015 (party-mode collision check), and the 21 upstream paths map one to one onto the 21 changed installed paths, 11 generated (7 module config.yaml, config.toml, pack.yaml, _config/manifest.yaml, _config/files-manifest.csv). Census refresh: 9 rows refreshed and 74 verified in both builds. The neutralizer removed 17 identity lines against 16 (config.toml now carries user_name = \"BMad\" as a default)."
       - aae-orc:_kos/findings/finding-147-unoverridable-ci-default-decided-composition.md
       - aae-orc:_kos/findings/finding-070-bmad-upstream-prescan-and-module-pinning.md
       - aae-orc:_kos/findings/finding-071-bmad-packaging-ladder-results.md
@@ -480,8 +483,9 @@ wrinkles:
       23 bmm skills, including the v6 shims, load config through
       resolve_config.py instead of reading _bmad/bmm/config.yaml directly, so
       overrides in _bmad/custom/config.toml and config.user.toml apply
-      everywhere (upstream #3019). In the default composition 15 installed
-      skill files change; the shims are not installed by default.
+      everywhere (upstream #3019: 23 files, of which 7 are v6 shims). In the
+      default composition 16 installed skill files change; the shims are not
+      installed by default.
     adaptation: >-
       None to the pipeline. The pack-side rewrite of {project-root}/_bmad/
       paths was not re-measured by this revalidation; the native-parity
