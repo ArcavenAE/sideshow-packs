@@ -80,7 +80,8 @@ Side observation, not counted: `project init` in that repo wrote a `.gitignore` 
 
 - **F-i, runtime:** native has no doctor to compare to, and it blocks no skill from working. Ticketed, not counted by runtime.
 - **F-d shape, 3 to 2** for doing both (links derived from the pack's top-level dirs gate the release; widening the rewrite to every text file follows in the sideshow alpha). Distribution and runtime voted links only; distribution notes that widening the rewrite is hygiene, not the F-d fix. Runtime's condition: the links gate the release, and the rewrite must not alter any byte the parity comparison checks beyond the declared rewrite.
-- **F-k placement (open, 3 to 2):** distribution and runtime for binding at project scope; cc-internals, evals and observability for a detection floor. cc-internals' point against project scope as stated: personal scope outranks project scope, so a project binding still loses unless the user-scope binding is also removed. That changes what a user-wide install means, so it goes to director as a ruling request. The detection floor is implemented regardless of the ruling.
+- **F-k placement (3 to 2 in the panel, since ruled):** distribution and runtime for binding at project scope; cc-internals, evals and observability for a detection floor. cc-internals' point against project scope as stated: personal scope outranks project scope, so a project binding still loses unless the user-scope binding is also removed. That changes what a user-wide install means, so it went to director as a ruling request.
+- **F-k ruling, 2026-10-05:** option 3, keep user scope and warn. `coexist-check` names every skill that collides between a repo's own `.claude/skills` and the user-scope bindings, and which copy the harness loads, shipping in the sideshow alpha as aae-orc-phytt. Option 1 (project-scope binding) was not taken. #44 records the ruling.
 
 ## What this adds beyond #44
 
@@ -88,5 +89,4 @@ The counting rule, the checks that dropped candidates, and the dissents. The F-j
 
 ## Open
 
-- The F-k placement ruling.
 - Whether the counting rule should be written into a requirement, or stay in this record.
