@@ -44,6 +44,8 @@ upstream:
     cis: https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite
     gds: https://github.com/bmad-code-org/bmad-module-game-dev-studio
     tea: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
+    bmb: https://github.com/bmad-code-org/bmad-builder
+    wds: https://github.com/bmad-code-org/bmad-method-wds-expansion
 
 # Preserve contract (aae-orc-d3nq.42). Authoritative never-remove
 # declaration for this pack; sideshow also compiles a conservative floor
@@ -99,9 +101,10 @@ validated:
     method: >-
       Extended to 6.12.1 on 2026-10-05 (aae-orc-y49j2): v6.12.0..v6.12.1
       installer source diff against all six assumptions, a local test build
-      with ALLOW_UNSUPPORTED=1 (no publish, no signing; not a CI run), and
-      artifact verification via scripts/verify-artifact.sh against a local
-      6.12.0 build of the same pipeline.
+      with ALLOW_UNSUPPORTED=1 and a dispatched CI test build (run
+      37389597180; no publish, no signing), and artifact verification via
+      scripts/verify-artifact.sh against a local 6.12.0 build and against the
+      published bmad-v6.12.0-r2 manifest.
       per-transition installer source diff across all 9 stable tags +
       9-rung build ladder (sign=false publish=false), pin composition
       verified per rung. Extended to 6.11.0 on 2026-08-28: v6.10.0..v6.11.0
@@ -114,6 +117,7 @@ validated:
       - "6.12.0 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2023 files, -2 vs 6.11.0; every external module carries a resolved sha; pack.yaml coherent"
       - "6.12.0 census delta fully attributed: 86 removed / 84 added, every path assigned to one of four causes (32 files across 20 retired shim IDs dropped by the new opt-in default; checkpoint-preview renamed to walkthrough, 8 for 8; 5 __pycache__ artefacts newly filtered; gds v0.6.0->v0.7.2, tea v1.21.10->v1.24.0, cis v0.2.1->v0.3.2 pin advance). No unexplained path."
       - "6.12.1 release notes read (gh release view v6.12.1, published 2026-10-04T19:29:43Z); its four fixes map to upstream #3019, #3016, #3020 and #3015, each recorded as a wrinkle below. No finding is written for step 4.3: no pipeline assumption changed, and the evidence is in these rows and the wrinkles."
+      - "6.12.1 run 37389597180 (dispatched test build, workflow build-pack.yml with sign=false publish=false allow_unsupported=true, success; ran the workflow as of main d7a80e6): artifact verify-artifact.sh against the published bmad-v6.12.0-r2 file-manifest.csv passed (composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2023 files, delta 0; census delta within band; every external module carries a resolved sha; pack.yaml coherent). Against that published manifest: 0 paths added or removed, 412 same-path content changes = 380 tea skill files, 21 upstream skill files, 11 generated files, the same split as the local build. Against the local 6.12.1 build the run differs in 10 files, all install-time generated (7 module config.yaml, pack.yaml, _config/manifest.yaml, _config/files-manifest.csv). Pins as resolved by the run: cis v0.3.2, gds v0.7.2, tea v1.27.2, bmb v2.2.2, wds v0.4.3. bmad-party-mode/scripts/tests/test_resolve_party.py is listed in the artifact's file-manifest.csv, so the 21 upstream paths all ship."
       - "6.12.1 installer diff v6.12.0..v6.12.1: under tools/ only tools/installer/core/manifest-generator.js changed (+18 lines, user-scope defaults written to config.toml, upstream #3016); package.json differs by the version only, engines node >=20.12.0 unchanged; no file added, removed or renamed (36 files modified); all six pipeline_assumptions hold"
       - "6.12.1 local test build (ALLOW_UNSUPPORTED=1, default modules read from this register, EXPECTED_UPSTREAM_SHA=790dae9c8e2a1d73575cb2d40b14dd4963391f29, which equals the tag commit; the build's upstream provenance check passed): pins cis v0.3.2, gds v0.7.2, tea v1.27.2, bmb v2.2.2, wds v0.4.3 resolved as of 2026-10-04T19:30:54Z; exit 0; not a CI run, not published"
       - "6.12.1 verify-artifact.sh: composition core,bmm,cis,gds,tea,bmb,wds matches the register; 2023 files, delta 0 vs a local 6.12.0 build of the same pipeline; every external module carries a resolved sha; pack.yaml coherent; RESULT passed"
