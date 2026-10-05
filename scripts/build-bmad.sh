@@ -15,7 +15,8 @@
 #
 # Environment:
 #   BMAD_VERSION   (default: 6.3.0)
-#   BMAD_MODULES   (default: bmm,cis,gds,tea)
+#   BMAD_MODULES   (default: the register's default_modules, read from
+#                  registry/bmad-pack-support.yaml, as CI does; empty = default)
 #   BMAD_TOOLS     (default: claude-code)
 #   BMAD_PINS      (default: auto) — external-module pinning policy:
 #                    auto   = resolve each external module to its highest
@@ -50,7 +51,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 BMAD_VERSION="${BMAD_VERSION:-6.3.0}"
-BMAD_MODULES="${BMAD_MODULES:-bmm,cis,gds,tea}"
+BMAD_MODULES="${BMAD_MODULES:-}"
 BMAD_TOOLS="${BMAD_TOOLS:-claude-code}"
 BMAD_PINS="${BMAD_PINS:-auto}"
 OUT_DIR="${OUT_DIR:-$(pwd)/artifacts}"
@@ -73,6 +74,14 @@ command -v yq >/dev/null || { echo "error: yq required (https://github.com/mikef
 command -v jq >/dev/null || { echo "error: jq required"; exit 1; }
 command -v git >/dev/null || { echo "error: git required"; exit 1; }
 command -v python3 >/dev/null || { echo "error: python3 required"; exit 1; }
+
+# Composition: an unset or empty BMAD_MODULES means the register's
+# default_modules, the same source CI reads (build-pack.yml), so a local default
+# build matches the published pack (aae-orc-lw82d, 4ptdd F-h).
+if [[ -z "${BMAD_MODULES}" ]]; then
+    BMAD_MODULES="$(bash "${SCRIPT_DIR}/bmad-default-modules.sh")"
+    echo "[build-bmad] BMAD_MODULES unset; using the register's default_modules: ${BMAD_MODULES}"
+fi
 
 # Packaging-support pre-flight: refuses versions outside the validated
 # bracket in registry/bmad-pack-support.yaml unless ALLOW_UNSUPPORTED=1. See
