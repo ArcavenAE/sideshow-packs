@@ -284,7 +284,12 @@ activation:
   validated_harness_floor: "claude-code 2.1.220"
 YAML
 
-# 5. file-manifest.csv (sha256,size,relpath) + exec-manifest.txt.
+# 4b. exec-manifest.txt (aae-orc-6la0l): written beside the tarball and
+# copied into the stage, after every step that changes content or modes and
+# before the hash pass, so the copy is listed in file-manifest.csv.
+bash "${SCRIPT_DIR}/write-exec-manifest.sh" "${PACK_STAGE}" "${OUT_DIR}/exec-manifest.txt"
+
+# 5. file-manifest.csv (sha256,size,relpath).
 echo "[build-vsdd] computing file manifest"
 (
     cd "${PACK_STAGE}"
@@ -304,10 +309,6 @@ echo "[build-vsdd] computing file manifest"
 ) > "${OUT_DIR}/file-manifest.csv"
 FILE_COUNT=$(wc -l < "${OUT_DIR}/file-manifest.csv" | tr -d ' ')
 
-(
-    cd "${PACK_STAGE}"
-    find . -type f -perm -0100 | sed 's|^\./||' | LC_ALL=C sort
-) > "${OUT_DIR}/exec-manifest.txt"
 
 # 5b. Carry file-manifest.csv inside the pack (aae-orc-xorml), after the
 # hash pass so it never lists itself; same contract as build-bmad.sh.

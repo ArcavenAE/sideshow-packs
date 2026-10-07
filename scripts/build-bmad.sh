@@ -343,6 +343,15 @@ cat "${CENSUS_RECORD}" >> "${PACK_STAGE}/pack.yaml"
 # mismatch, so an edit made after the refresh cannot ship a failing census.
 python3 "${SCRIPT_DIR}/bmad-census.py" verify --pack-stage "${PACK_STAGE}"
 
+# 3e. exec-manifest.txt (aae-orc-6la0l, aae-orc-d3nq.12): the executable
+# census, written beside the tarball and copied into the stage so an
+# extracted pack still has it. It runs after every step above that changes
+# content or modes (the neutralizer, the census refresh) and before the hash
+# pass below, so the list and the hashes describe the same tree and the
+# copy is listed in file-manifest.csv. bmad ships a handful of executable
+# scripts (14 .py at 6.12.0), so the list is not empty.
+bash "${SCRIPT_DIR}/write-exec-manifest.sh" "${PACK_STAGE}" "${OUT_DIR}/exec-manifest.txt"
+
 # 4. Emit file-manifest.csv (sha256,size,relpath).
 echo "[build-bmad] computing file manifest"
 (
@@ -363,14 +372,8 @@ echo "[build-bmad] computing file manifest"
 ) > "${OUT_DIR}/file-manifest.csv"
 FILE_COUNT=$(wc -l < "${OUT_DIR}/file-manifest.csv" | tr -d ' ')
 
-# 4b. exec-manifest.txt + manifest hashes (aae-orc-d3nq.12): same
-# contract shape as build-vsdd-factory.sh so consumers verify every
-# pack identically. bmad ships no executables today; an empty manifest
-# recording that fact is still part of the signed contract.
-(
-    cd "${PACK_STAGE}"
-    find . -type f -perm -0100 | sed 's|^\./||' | LC_ALL=C sort
-) > "${OUT_DIR}/exec-manifest.txt"
+# 4b. Manifest hashes (aae-orc-d3nq.12): the exec manifest was written
+# before the hash pass in step 3e, so it is listed in file-manifest.csv.
 if command -v sha256sum >/dev/null; then
     FILE_MANIFEST_SHA="$(sha256sum "${OUT_DIR}/file-manifest.csv" | awk '{print $1}')"
     EXEC_MANIFEST_SHA="$(sha256sum "${OUT_DIR}/exec-manifest.txt" | awk '{print $1}')"

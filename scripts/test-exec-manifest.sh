@@ -37,13 +37,14 @@ make_stage() {
     printf '#!/bin/sh\n' > "$s/bin/tool.sh";  chmod 755 "$s/bin/tool.sh"
     printf '#!/usr/bin/env python3\n' > "$s/core/run.py"; chmod 755 "$s/core/run.py"
     printf 'doc\n' > "$s/core/doc.md"
+    printf '#!/bin/sh\n' > "$s/core/owner-only.sh"; chmod 700 "$s/core/owner-only.sh"
 }
 
 # ---- the helper ------------------------------------------------------------
 S="$DIR/stage"; make_stage "$S"
 out="$(bash "$WRITE" "$S" "$DIR/exec.txt" 2>&1)"; rc=$?
 check_eq "helper exits 0" "0" "$rc"
-check_eq "helper lists the executables, sorted" $'bin/tool.sh\ncore/run.py' "$(cat "$DIR/exec.txt" 2>/dev/null)"
+check_eq "helper lists the executables, sorted" $'bin/tool.sh\ncore/owner-only.sh\ncore/run.py' "$(cat "$DIR/exec.txt" 2>/dev/null)"
 check_eq "helper copies the manifest into the stage" "$(cat "$DIR/exec.txt" 2>/dev/null)" "$(cat "$S/exec-manifest.txt" 2>/dev/null)"
 if [[ -x "$S/exec-manifest.txt" ]]; then check_eq "the in-stage manifest is not executable" "no" "yes"; else pass=$((pass + 1)); fi
 
@@ -73,7 +74,7 @@ build_artifact() {
         : > "$a/exec-manifest.txt"
     fi
     if [[ "$variant" == "not-exec" ]]; then
-        printf 'bin/tool.sh\ncore/doc.md\ncore/run.py\n' > "$st/exec-manifest.txt"
+        printf 'bin/tool.sh\ncore/doc.md\ncore/owner-only.sh\ncore/run.py\n' > "$st/exec-manifest.txt"
         cp "$st/exec-manifest.txt" "$a/exec-manifest.txt"
     fi
     (
@@ -124,6 +125,24 @@ build_artifact "$DIR/mismatch" mismatch
 out="$(run_verify "$DIR/mismatch")"; rc=$?
 check_eq "an in-tarball manifest unlike the sibling fails (exit)" "1" "$rc"
 check "the failure names the sibling mismatch" "in-tarball exec-manifest.txt differs from the release asset" "$out"
+
+# ---- builder order ---------------------------------------------------------
+# The manifest must be written before the hash pass so it is listed in
+# file-manifest.csv, and nothing may change the stage between the two. The
+# builders need network and upstream installers, so pin the order statically.
+order() { # script helper-marker hash-marker
+    local h c
+    h="$(grep -n -E -- "$2" "$1" | head -1 | cut -d: -f1)"
+    c="$(grep -n -F -- "$3" "$1" | head -1 | cut -d: -f1)"
+    if [[ -n "$h" && -n "$c" && "$h" -lt "$c" ]]; then echo before; else echo "helper=${h:-none} hash=${c:-none}"; fi
+}
+check_eq "build-bmad.sh writes exec-manifest.txt before the hash pass" "before" \
+    "$(order "${SD}/build-bmad.sh" '^bash "[$][{]SCRIPT_DIR[}]/write-exec-manifest[.]sh" "[$][{]PACK_STAGE[}]"' 'computing file manifest')"
+check_eq "build-vsdd-factory.sh writes exec-manifest.txt before the hash pass" "before" \
+    "$(order "${SD}/build-vsdd-factory.sh" '^bash "[$][{]SCRIPT_DIR[}]/write-exec-manifest[.]sh" "[$][{]PACK_STAGE[}]"' 'computing file manifest')"
+for b in build-bmad.sh build-vsdd-factory.sh; do
+    check_eq "${b} no longer builds the exec list inline" "0" "$(grep -c 'find . -type f -perm -0100' "${SD}/${b}")"
+done
 
 echo "exec-manifest tests: ${pass} passed, ${fail} failed"
 [[ "${fail}" == "0" ]]
