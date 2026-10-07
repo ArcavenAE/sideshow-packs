@@ -48,3 +48,6 @@ jobs:
 
       - name: Run bmad default-modules tests
         run: bash scripts/test-bmad-default-modules.sh
+
+      - name: Run exec-manifest tests
+        run: bash scripts/test-exec-manifest.sh

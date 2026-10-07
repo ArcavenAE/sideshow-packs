@@ -61,7 +61,7 @@ For pack `<pack>` at version `<v>`:
 | `install.meta.json` | Machine-readable predicate (same shape as YAML, no comments) |
 | `install.meta.yaml.sig` / `install.meta.yaml.bundle` | cosign sig + bundle for the YAML |
 | `file-manifest.csv` | Per-file `sha256,size,relpath` — the parity reference for `aae-orc-7dri` |
-| `exec-manifest.txt` | Sorted relpaths that must carry exec bits after extraction — the mode-bit contract. Empty for packs that ship no executables (bmad); 112 entries for vsdd-factory at rc.23 |
+| `exec-manifest.txt` | Sorted relpaths that must carry exec bits after extraction: the mode-bit contract. Also carried inside the tarball (aae-orc-6la0l), listed in `file-manifest.csv`. 14 entries for bmad 6.12.0; 112 for vsdd-factory at rc.23 |
 
 Both manifests are covered by the signature chain transitively:
 `install.meta` records `artifact.file_manifest_sha256` and

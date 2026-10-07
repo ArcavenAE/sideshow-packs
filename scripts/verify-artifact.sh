@@ -172,6 +172,45 @@ if [[ -n "${TARBALL}" ]]; then
     fi
 fi
 
+# ---- 6. exec-manifest.txt travels inside the tarball ----------------------
+# Same reason as file-manifest.csv, and sideshow reads it at install time to
+# check exec bits (aae-orc-6la0l). Without an in-pack copy that check finds
+# nothing in an extracted pack and skips. The copy must be the same bytes as
+# the sibling asset, must have a row in file-manifest.csv (it is written
+# before the hash pass, unlike file-manifest.csv itself), and must list
+# exactly the files that carry an exec bit in the tarball.
+if [[ -n "${TARBALL}" ]]; then
+    IN_EXEC="$(tar -tzf "${TARBALL}" | grep -m1 -E '^[^/]+/exec-manifest\.txt$' || true)"
+    if [[ -z "${IN_EXEC}" ]]; then
+        bad "tarball carries no exec-manifest.txt; install-time exec-bit verification would silently skip"
+    else
+        if [[ -f "${DIR}/exec-manifest.txt" ]]; then
+            diff -q <(tar -xzOf "${TARBALL}" "${IN_EXEC}") "${DIR}/exec-manifest.txt" >/dev/null \
+                && ok "in-tarball exec-manifest.txt matches the release asset" \
+                || bad "in-tarball exec-manifest.txt differs from the release asset"
+        else
+            note "info" "no exec-manifest.txt release asset to compare against"
+        fi
+        if grep -q -E ',exec-manifest\.txt$' "${MANIFEST}"; then
+            ok "exec-manifest.txt has a row in file-manifest.csv"
+        else
+            bad "file-manifest.csv has no row for exec-manifest.txt; it must be written before the hash pass"
+        fi
+        EXTRACT="$(mktemp -d)"
+        tar -xzf "${TARBALL}" -C "${EXTRACT}"
+        ROOT="${EXTRACT}/${IN_EXEC%%/*}"
+        ACTUAL_EXEC="$(cd "${ROOT}" && find . -type f -perm -0100 | sed 's|^\./||' | LC_ALL=C sort)"
+        LISTED_EXEC="$(grep -v '^[[:space:]]*$' "${ROOT}/exec-manifest.txt" | LC_ALL=C sort || true)"
+        rm -rf "${EXTRACT}"
+        if [[ "${ACTUAL_EXEC}" == "${LISTED_EXEC}" ]]; then
+            ok "exec-manifest.txt lists exactly the executable files ($(grep -c . <<<"${ACTUAL_EXEC}" || true))"
+        else
+            bad "exec-manifest.txt does not match the executable files in the tarball"
+            diff <(echo "${LISTED_EXEC}") <(echo "${ACTUAL_EXEC}") | head -6 | sed 's/^/             /' || true
+        fi
+    fi
+fi
+
 echo
 if (( fail )); then
     echo "RESULT: FAILED — do not extend the bracket or publish"
