@@ -1,0 +1,110 @@
+# Pack-support register: prism (DRAFT, unvalidated)
+# Candidate pack, not onboarded. Nothing here has been built or verified
+# in the pipeline: `validated` is empty on purpose. Schema v0.2.0 fields;
+# see docs/pack-support-candidates.md. Facts below were read from the
+# upstream tree and its release list on 2026-10-07 (aae-orc-2sdau).
+
+kind: pack-support
+schema_version: 0.2.0
+status: draft-unvalidated
+pack: prism
+
+upstream:
+  repo: https://github.com/BOHICA-LABS/prism   # PRIVATE, archived
+  default_branch: develop                       # gitflow; HEAD is not release content
+  note: >-
+    The old drbothen/prism path redirects here; the upstream README's
+    install URLs still use it. The repo is private and archived, so
+    there is no public mirror and no unauthenticated clone.
+  content_root: .                # open: see the pack-shape wrinkle
+
+version_scheme: semver-prereleases
+release_line: prerelease         # v1.0.0-beta.N plus rolling nightlies
+                                 # (v1.0.0-nightly.<date>, floating edge-nightly)
+
+# Candidate pin. Tags are annotated: the tag object is 503570c1, the
+# commit it points at is the SHA below. Pin the commit.
+candidate_pin:
+  tag: v1.0.0-beta.2
+  commit: baf720d89d4dfbcae40dc2d2b6199a67fa02b1be
+  committed_at: "2026-09-09"
+  note: an ancestor of develop; the newest non-nightly tag at 2026-10-07
+
+acquisition:
+  method: undecided              # blocked: see the source-access wrinkle
+  # What upstream publishes for a consumer: one `prism` binary per
+  # target (macOS arm64, Linux glibc and musl, Windows), checksums.txt,
+  # install scripts, and a specs tarball, all as release assets.
+
+redistribution: public-ok-by-owner-grant
+# The repo carries no LICENSE, COPYING or NOTICE file, and no copyright
+# text; the crate manifests say license = "MIT". The project owner
+# stated the licence is MIT (operator ruling relayed 2026-10-08), which
+# is the redistribution grant. The pack therefore ships the MIT text.
+# The copyright holder line is not yet settled and is not guessed here.
+
+activation:
+  default_scope: user            # proposed, not ratified
+  per_repo_required: false
+  rationale: >-
+    The consumable is an MCP server binary plus a per-user config
+    directory; nothing in the repo is a harness-native skill, command or
+    agent for a consumer. Scope is open until the pack shape is decided.
+
+pipeline_assumptions:
+  - id: tag-resolves-to-pinned-commit
+    desc: the annotated tag peels to candidate_pin.commit at every build
+  - id: license-text-shipped
+    desc: the pack stages an MIT LICENSE file, since the upstream tree has none
+  - id: no-consumer-skills
+    desc: the upstream tree ships no consumer-facing skills, commands, agents, rules or hooks (the one .claude skill is contributor-only); re-check at every pin
+
+validated: []
+
+wrinkles:
+  - id: source-access-private-archived
+    introduced_in: null
+    resolved_in: null
+    severity: blocking-for-build
+    summary: >-
+      The source is private. The public pipeline clones with no
+      credential; a prism build would need a read credential for a
+      private repo, which is a custody decision, not a pipeline detail.
+    adaptation: none yet; decision with the operator.
+  - id: pack-shape-undecided
+    introduced_in: null
+    resolved_in: null
+    severity: blocking-for-build
+    summary: >-
+      The ticket asks for a typed install-source reference, but that
+      contract (aae-orc-h07h, aae-orc-mezl) is still an open spec. A
+      frozen capture of the source tree is not what a harness consumes;
+      the release binary is.
+    adaptation: none yet; architect design call.
+  - id: no-license-file
+    introduced_in: null
+    resolved_in: null
+    severity: blocking-for-publish
+    summary: >-
+      No LICENSE file upstream, and the copyright holder is not stated
+      anywhere in the tree. The pack must carry the MIT text with a
+      holder line the operator supplies.
+    adaptation: stage the licence text in the build, as build-vsdd-factory.sh does for a plugin subtree.
+  - id: third-party-notices
+    introduced_in: null
+    resolved_in: null
+    severity: blocking-for-publish
+    summary: >-
+      The MIT grant covers upstream's own code. The tree also vendors
+      third-party material, so a pack that redistributes source or a
+      binary carries those notices too. Owner and shape of the notice
+      file are undecided.
+    adaptation: none yet; architect design call.
+  - id: nightly-and-floating-tags
+    introduced_in: null
+    resolved_in: null
+    severity: advisory
+    summary: >-
+      Nightly tags are cut daily and edge-nightly moves; neither is a
+      stable pin. Pin a beta tag's commit, never a floating tag.
+    adaptation: the builder resolves the tag to a commit and compares it with candidate_pin.commit.
