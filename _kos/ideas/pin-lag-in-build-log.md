@@ -1,3 +1,5 @@
+Closed 2026-10-25: pointers closed
+
 # idea: print the pin-lag report in the build log
 
 **Date:** 2026-09-27
