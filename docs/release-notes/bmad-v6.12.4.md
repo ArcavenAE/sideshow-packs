@@ -59,9 +59,13 @@ files.
 
 - **Customization files keep their old names unless you rename them.** If
   your repo's `_bmad-custom/` still uses the names of skills that upstream
-  renamed in 6.11.0 and 6.12.0, an override under an old name is not applied.
-  This pack ships no compatibility shim (the `v6-shims` directories hold a
-  README only), so nothing forwards the old name to the new one. Upgrading the
+  renamed in 6.11.0 and 6.12.0, an override under an old name is not applied, and nothing halts.
+  Measured in a scratch bound repo under this build: with `bmad-sprint-status.toml`
+  in `_bmad-custom/`, the customization resolver returned the default for
+  `bmad-sprint-planning`; the same override under `bmad-sprint-planning.toml`
+  was applied. This pack ships no compatibility shim (the `v6-shims`
+  directories hold a README only), so nothing forwards the old name to the
+  new one. Upgrading the
   pack does not rename those files. The old-to-new list is in the
   [6.12.0 notes](https://github.com/ArcavenAE/sideshow-packs/blob/main/docs/release-notes/bmad-v6.12.0.md),
   which also point back to the 6.11.0 table.
