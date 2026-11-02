@@ -51,6 +51,13 @@ passed; comparison 8 (harness observations) was not run.
 
 ## Notes for consumers
 
+- **Customization files keep their old names unless you rename them.** If
+  your repo's `_bmad-custom/` still uses the names of skills that upstream
+  renamed in 6.11.0 and 6.12.0, an unattended run on such a skill halts
+  rather than forwarding. Upgrading the pack does not rename those files. The
+  old-to-new list is in the 6.12.0 notes
+  (`docs/release-notes/bmad-v6.12.0.md`, which also points back to the 6.11.0
+  table).
 - **`_bmad/custom/` is empty in a bound repo (D-3).** A native install seeds
   two commented template files there (`config.toml`, `config.user.toml`);
   `sideshow project init` creates the directory empty. The templates are all
