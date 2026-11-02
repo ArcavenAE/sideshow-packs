@@ -588,6 +588,18 @@ wrinkles:
     references:
       - https://github.com/bmad-code-org/BMAD-METHOD/releases/tag/v6.12.3
 
+# Versions whose explicit external-module pins a test build verified.
+# scripts/upstream-intake.sh dispatches a publishing build only for a version
+# listed here, and passes `pins` as the dispatch input. A version inside the
+# validated bracket but absent here is skipped with a log line: pins=auto
+# resolves as of the release date and can name a module release the
+# installer cannot use (see the wrinkle registry-module-pins). Add an entry
+# only with the run that verified those pins.
+verified_pins:
+  - version: "6.12.4"
+    pins: "cis=v0.3.2,gds=v0.7.2,tea=v1.27.2,bmb=v2.2.2,wds=v0.4.3"
+    run: "41455632526"   # test build, sign=false publish=false, verify-artifact RESULT passed
+
 # For versions OUTSIDE every validated bracket: check-support.sh points
 # here. An LLM (or human) follows this runbook to re-validate, then
 # extends the bracket above with new evidence.

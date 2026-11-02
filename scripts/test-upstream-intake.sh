@@ -48,11 +48,37 @@ EOF
 EOF
     echo '[]' > issues.json
     echo '{}' > obs.json
-    # wide validated bracket so the dispatch path is reachable
+    # wide validated bracket so the dispatch path is reachable, with
+    # explicit verified pins recorded for the three fixture versions
     cat > registry-wide.yaml <<'EOF'
 validated:
   - min: 6.3.0
     max: 6.99.0
+verified_pins:
+  - version: "6.11.0"
+    pins: "cis=v0.3.2,gds=v0.7.2,tea=v1.27.2,bmb=v2.2.2,wds=v0.4.3"
+  - version: "6.11.1"
+    pins: "cis=v0.3.2,gds=v0.7.2,tea=v1.27.2,bmb=v2.2.2,wds=v0.4.3"
+  - version: "6.11.2"
+    pins: "cis=v0.3.2,gds=v0.7.2,tea=v1.27.2,bmb=v2.2.2,wds=v0.4.3"
+EOF
+    # wide bracket, pins verified for 6.11.1 only
+    cat > registry-partial.yaml <<'EOF'
+validated:
+  - min: 6.3.0
+    max: 6.99.0
+verified_pins:
+  - version: "6.11.1"
+    pins: "cis=v0.3.2,gds=v0.7.2,tea=v1.27.2,bmb=v2.2.2,wds=v0.4.3"
+EOF
+    # wide bracket, one malformed pins entry
+    cat > registry-badpins.yaml <<'EOF'
+validated:
+  - min: 6.3.0
+    max: 6.99.0
+verified_pins:
+  - version: "6.11.1"
+    pins: "cis=v0.3.2;touch /tmp/pwned"
 EOF
     # narrow bracket mirroring the real register's ceiling
     cat > registry-narrow.yaml <<'EOF'
@@ -95,7 +121,7 @@ check_absent "T1 nothing dispatched"  t1.out 'dispatch build-pack'
 check "T1 obs save (dry)"             t1.out 'DRY-RUN: would save observations'
 check "T1 marker ok"                  t1.out 'Latest marker OK \(bmad-v6\.10\.0\)'
 
-echo "=== T2: soaked + stable SHA dispatches with rung composition + expected_sha ==="
+echo "=== T2: soaked + stable SHA dispatches with rung composition, the register pins and expected_sha ==="
 reset_fixtures
 cat > obs.json <<EOF
 {"6.11.0":{"sha":"aaa1111111111111","first_seen":"$(h 1)"},
@@ -104,8 +130,9 @@ cat > obs.json <<EOF
 EOF
 run_intake > t2.out 2>&1
 check "T2 young version soaks"        t2.out '6\.11\.0: soaking \(published 1h/72h'
-check "T2 6.11.1 dispatched"          t2.out 'would dispatch build-pack\.yml: pack=bmad version=6\.11\.1 modules=bmm,cis,gds,tea,bmb,wds pins=auto sign=true publish=true expected_sha=bbb2222222222222'
+check "T2 6.11.1 dispatched"          t2.out 'would dispatch build-pack\.yml: pack=bmad version=6\.11\.1 modules=bmm,cis,gds,tea,bmb,wds pins=cis=v0\.3\.2,gds=v0\.7\.2,tea=v1\.27\.2,bmb=v2\.2\.2,wds=v0\.4\.3 sign=true publish=true expected_sha=bbb2222222222222'
 check "T2 6.11.2 dispatched"          t2.out 'would dispatch build-pack\.yml: pack=bmad version=6\.11\.2 .*expected_sha=ccc3333333333333'
+check_absent "T2 no pins=auto"        t2.out 'pins=auto'
 check "T2 summary"                    t2.out 'done: dispatched=2 dropped=0'
 
 echo "=== T3: outside validated bracket -> revalidation issue, no dispatch ==="
@@ -208,6 +235,28 @@ env DRY_RUN=1 NOW_EPOCH=$NOW \
     bash "$SCRIPT" > t10.out 2>&1
 check "T10 ledger obs honored"        t10.out 'would dispatch build-pack\.yml: pack=bmad version=6\.11\.1'
 check "T10 save targets ledger (dry)" t10.out 'DRY-RUN: would save observations'
+
+echo "=== T11: in bracket without verified pins is skipped, a verified sibling dispatches ==="
+reset_fixtures
+cat > obs.json <<EOF
+{"6.11.1":{"sha":"bbb2222222222222","first_seen":"$(h 30)"},
+ "6.11.2":{"sha":"ccc3333333333333","first_seen":"$(h 30)"}}
+EOF
+run_intake REGISTRY_FILE="$DIR/registry-partial.yaml" > t11.out 2>&1
+check "T11 verified version dispatches with its pins" t11.out 'would dispatch build-pack\.yml: pack=bmad version=6\.11\.1 .*pins=cis=v0\.3\.2,gds=v0\.7\.2,tea=v1\.27\.2,bmb=v2\.2\.2,wds=v0\.4\.3 '
+check "T11 unverified version logged" t11.out '6\.11\.2: soaked \+ sha stable, in bracket, but the register records no verified pins'
+check_absent "T11 unverified not dispatched" t11.out 'dispatch build-pack\.yml: pack=bmad version=6\.11\.2'
+check "T11 summary counts one dispatch" t11.out 'done: dispatched=1 dropped=0'
+
+echo "=== T12: a malformed pins entry is treated as unverified, never dispatched ==="
+reset_fixtures
+cat > obs.json <<EOF
+{"6.11.1":{"sha":"bbb2222222222222","first_seen":"$(h 30)"}}
+EOF
+run_intake REGISTRY_FILE="$DIR/registry-badpins.yaml" > t12.out 2>&1
+check "T12 skipped as unverified"     t12.out '6\.11\.1: soaked \+ sha stable, in bracket, but the register records no verified pins'
+check_absent "T12 not dispatched"     t12.out 'dispatch build-pack'
+check_absent "T12 payload not echoed" t12.out 'pwned'
 
 echo
 echo "=== RESULT: $PASS passed, $FAIL failed ==="

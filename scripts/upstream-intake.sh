@@ -248,6 +248,16 @@ modules_for() {
 # --- Support bracket ---------------------------------------------------
 
 BRACKETS_JSON="$(yq -o json '.validated' "${REGISTRY_FILE}")"
+VERIFIED_PINS_JSON="$(yq -o json '.verified_pins // []' "${REGISTRY_FILE}")"
+# Explicit pins the register records for a version, or nothing. A value that
+# is not a comma list of code=tag pairs is treated as absent, so a malformed
+# register entry can never reach the dispatch as an argument.
+verified_pins_for() { # version -> pins on stdout, exit 1 when none
+    local p
+    p="$(jq -r --arg v "$1" '[.[] | select(.version == $v) | .pins] | first // empty' <<< "${VERIFIED_PINS_JSON}")"
+    [[ "$p" =~ ^[a-z]+=[A-Za-z0-9._-]+(,[a-z]+=[A-Za-z0-9._-]+)*$ ]] || return 1
+    printf '%s\n' "$p"
+}
 FLOOR="$(jq -r '[.[].min] | sort_by(split(".") | map(tonumber)) | first' <<< "${BRACKETS_JSON}")"
 
 in_bracket() { # version -> 0/1 exit
@@ -358,19 +368,24 @@ for ver in ${MISSING}; do
         continue
     fi
 
+    if ! pins="$(verified_pins_for "${ver}")"; then
+        log "${ver}: soaked + sha stable, in bracket, but the register records no verified pins (verified_pins in registry/${PACK}-pack-support.yaml); skipping, nothing dispatched"
+        continue
+    fi
+
     if (( DISPATCHED >= MAX_DISPATCH )); then
         DROPPED=$((DROPPED + 1))
         continue
     fi
 
     mods="$(modules_for "${ver}")"
-    log "$(dryrun_prefix)dispatch build-pack.yml: pack=${PACK} version=${ver} modules=${mods} pins=auto sign=true publish=true expected_sha=${sha_now}"
+    log "$(dryrun_prefix)dispatch build-pack.yml: pack=${PACK} version=${ver} modules=${mods} pins=${pins} sign=true publish=true expected_sha=${sha_now}"
     if [[ "${DRY_RUN}" != "1" ]]; then
         gh workflow run build-pack.yml -R "${REPO}" \
             -f pack="${PACK}" \
             -f version="${ver}" \
             -f modules="${mods}" \
-            -f pins=auto \
+            -f pins="${pins}" \
             -f sign=true \
             -f publish=true \
             -f expected_sha="${sha_now}"
