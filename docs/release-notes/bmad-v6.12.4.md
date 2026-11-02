@@ -73,6 +73,7 @@ files.
   a repo bound with gds.** Both `bmm` and `gds` define `implementation_artifacts`
   and `planning_artifacts`, and `render_skill.py` halts when a short key
   matches more than one module. Native behavior has not been compared yet.
+  Tracked in ArcavenAE/sideshow-packs#65.
 - **`_bmad/custom/` is empty in a bound repo (D-3).** A native install seeds
   two commented template files there (`config.toml`, `config.user.toml`);
   `sideshow project init` creates the directory empty. The templates are all
