@@ -14,7 +14,8 @@ comparison against a native `bmad-method@6.12.4` install: the same 102 skills,
 and every byte that differs is the declared rewrite. Installing this artifact
 never executes upstream JavaScript on your machine.
 
-**Composition: seven modules**, declared in `registry/bmad-pack-support.yaml`
+**Composition: seven modules**, declared in
+[`registry/bmad-pack-support.yaml`](https://github.com/ArcavenAE/sideshow-packs/blob/main/registry/bmad-pack-support.yaml)
 as `default_modules`, with the five external modules pinned explicitly:
 
 | module | version | source | vs 6.12.0-r2 |
@@ -36,8 +37,13 @@ holds 2025 files: those 2024 and the manifest itself.
 
 ## Parity with a native install
 
-The record is `docs/design/bmad-v6.12.4-native-parity.md`. Comparisons 1 to 7
-passed; comparison 8 (harness observations) was not run.
+The record is [`docs/design/bmad-v6.12.4-native-parity.md`](https://github.com/ArcavenAE/sideshow-packs/blob/main/docs/design/bmad-v6.12.4-native-parity.md).
+Comparisons 1 to 7 passed; comparison 8 (harness observations) was not run.
+The record compared test build `4c978198...` (run 41455632526), not this
+release build. The two builds carry the same 1943 skill files, byte for byte.
+Of the 2025 files in each, 11 differ, and all 11 are generated at build time:
+the timestamps, the manifests, `pack.yaml` and the per-module `config.yaml`
+files.
 
 - Skill set: 102 of 102 names equal.
 - Skill bytes: 189 of 1943 files differ from a native install; after
@@ -53,11 +59,12 @@ passed; comparison 8 (harness observations) was not run.
 
 - **Customization files keep their old names unless you rename them.** If
   your repo's `_bmad-custom/` still uses the names of skills that upstream
-  renamed in 6.11.0 and 6.12.0, an unattended run on such a skill halts
-  rather than forwarding. Upgrading the pack does not rename those files. The
-  old-to-new list is in the 6.12.0 notes
-  (`docs/release-notes/bmad-v6.12.0.md`, which also points back to the 6.11.0
-  table).
+  renamed in 6.11.0 and 6.12.0, an override under an old name is not applied.
+  This pack ships no compatibility shim (the `v6-shims` directories hold a
+  README only), so nothing forwards the old name to the new one. Upgrading the
+  pack does not rename those files. The old-to-new list is in the
+  [6.12.0 notes](https://github.com/ArcavenAE/sideshow-packs/blob/main/docs/release-notes/bmad-v6.12.0.md),
+  which also point back to the 6.11.0 table.
 - **`_bmad/custom/` is empty in a bound repo (D-3).** A native install seeds
   two commented template files there (`config.toml`, `config.user.toml`);
   `sideshow project init` creates the directory empty. The templates are all
@@ -70,24 +77,32 @@ passed; comparison 8 (harness observations) was not run.
   modules as `pinned`; a native install records `stable` for the same tag and
   commit.
 - **`sideshow install` activates what it installs.** Installing 6.12.4 makes
-  it the active bmad version. To go back, run `sideshow use bmad <version>`
-  for a version you still have installed.
+  it the active bmad version, and `sideshow list` marks the active version
+  with `*`. Pass `--no-activate` to install without changing the active
+  version (a first install of a pack always activates). To go back, run
+  `sideshow use bmad <version>` for a version you still have installed.
 
 ## Verify
 
 ```sh
 cosign verify-blob \
   --bundle bmad-6.12.4-arcaven.tar.gz.bundle \
-  --certificate-identity-regexp 'https://github.com/ArcavenAE/sideshow-packs/.github/workflows/.*' \
+  --certificate-identity 'https://github.com/ArcavenAE/sideshow-packs/.github/workflows/build-pack.yml@refs/heads/main' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   bmad-6.12.4-arcaven.tar.gz
 
 cosign verify-blob-attestation \
   --bundle bmad-6.12.4-arcaven.tar.gz.attest.bundle \
-  --certificate-identity-regexp 'https://github.com/ArcavenAE/sideshow-packs/.github/workflows/.*' \
+  --certificate-identity 'https://github.com/ArcavenAE/sideshow-packs/.github/workflows/build-pack.yml@refs/heads/main' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --type https://arcaven.com/sideshow/install-meta \
   bmad-6.12.4-arcaven.tar.gz
+
+cosign verify-blob \
+  --bundle install.meta.yaml.bundle \
+  --certificate-identity 'https://github.com/ArcavenAE/sideshow-packs/.github/workflows/build-pack.yml@refs/heads/main' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  install.meta.yaml
 ```
 
-Both print `Verified OK` for this release.
+All three print `Verified OK` for this release.
