@@ -18,8 +18,8 @@ Parity holds, with four differences, each attributed below. No fault from this r
 | 4. Reference closure | 4 distinct `{project-root}/_bmad/` references still present in bound skills resolve | 3 of 4 resolve from a bound repo | 1 residual (D-3) |
 | 5. Resolved config | 158 keys | 156 keys | 156 of 158 match; the 2 are D-1 |
 | 6. Executable bits | n/a | n/a | 0 mismatches across 1943 skill files |
-| 8. Harness observations | n/a | n/a | not run |
 | 7. Tool verdicts | n/a | `doctor` 12 ok, 1 warn, 0 fail; `status` 102 of 102 synced; `coexist-check` clean | the one warn is D-4 |
+| 8. Harness observations | n/a | n/a | not run |
 
 ## Method as run
 
@@ -44,13 +44,67 @@ Evidence the native tree is this install:
 | bmb | v2.2.2 | `4a1422274a2acb0fb0ec0511753da6263948f072` | `4a1422274a2acb0fb0ec0511753da6263948f072` | yes |
 | wds | v0.4.3 | `cc16f09fcfab26d35635af1491f36a38a8431c8d` | `cc16f09fcfab26d35635af1491f36a38a8431c8d` | yes |
 
-Tree digests of the native `_bmad/`: sha256 of the sorted file listing (`find . -type f | LC_ALL=C sort`, 79 paths) `1af5de7a9a445b50a98b7c9159004d4f12e31f80b91ab468288c32231b7a5a39`; sha256 of `_config/files-manifest.csv` `674c9feb3446423be27736b4c6bd603526816377c7d7edf03db10e08e12026fb`. The headline counts of this run (102 skills, 189 differing files, 156 of 158 keys) equal the 6.12.1 record's. I did not diff the two releases' skill sets to explain that; the manifest, shas and digests above are what tie these counts to this install, and a reader can compare them against an install of their own.
+Tree digests of the native `_bmad/`, run from the scratch root `$R` (the directory holding `native/`):
+
+```sh
+cd "$R/native/_bmad" && find . -type f | LC_ALL=C sort | shasum -a 256
+shasum -a 256 "$R/native/_bmad/_config/files-manifest.csv"
+```
+
+```text
+1af5de7a9a445b50a98b7c9159004d4f12e31f80b91ab468288c32231b7a5a39  -
+674c9feb3446423be27736b4c6bd603526816377c7d7edf03db10e08e12026fb  native/_bmad/_config/files-manifest.csv
+```
+
+The first digest is of the sorted listing (79 paths); the second is of `files-manifest.csv`. The headline counts of this run (102 skills, 189 differing files, 156 of 158 keys) equal the 6.12.1 record's. I did not diff the two releases' skill sets to explain that; the manifest, shas and digests above are what tie these counts to this install, and a reader can compare them against an install of their own.
 
 **Pack side.** The test build of run 41455632526 (`sign=false`, `publish=false`, `allow_unsupported=true`, explicit pins `cis=v0.3.2,gds=v0.7.2,tea=v1.27.2,bmb=v2.2.2,wds=v0.4.3`), tarball sha256 `4c97819850279f38971170ba19a538ca157db1d687e471922d445bfc570c2958`, upstream git head `bab9082c3e884e0d72c759bcd1a6d90bcc01be84`. It is a test artifact, not a release. Installed with sideshow `0.1.0-alpha.20260914.134314.e32032f` in a second scratch HOME: `sideshow install bmad --from <dir>`, `sideshow commands sync`, then `sideshow project init bmad` in a fresh git repo.
 
 **Run conditions.** Scratch HOME and project directories only; no real config directory, sideshow home or marvel socket touched; no publish, tag or install into a live home. Swap free was 1388 MB before and after.
 
-**Installed side C (`CLAUDE_CONFIG_DIR` set).** Run, in a third scratch HOME with `CLAUDE_CONFIG_DIR` pointing at a separate empty directory. With this sideshow build the 102 skills were bound under `$HOME/.claude/skills`, not under `CLAUDE_CONFIG_DIR` (that directory stayed empty), and the Read permission was written to `$HOME/.claude/settings.json`. The 1943 bound files are byte-equal to side B after normalizing the home path. That is the sideshow behavior the 6.12.1 record lists as F-g (aae-orc-89cxz); it is not a pack difference, and the pack bytes are the same either way.
+**Installed side C (`CLAUDE_CONFIG_DIR` set).** Run in a third scratch HOME, `$R/chome`, with `CLAUDE_CONFIG_DIR` pointing at an empty directory, `$R/ccfg`. Every path below is relative to the scratch root `$R`; no real home directory is read or written.
+
+```sh
+mkdir -p chome cproj ccfg && (cd cproj && git init -q .)
+export HOME="$R/chome" CLAUDE_CONFIG_DIR="$R/ccfg"; unset MARVEL_SOCKET SIDESHOW_HOME
+sideshow install bmad --from packdir/bmad-6.12.4 --yes
+sideshow commands sync
+(cd cproj && sideshow project init bmad)
+```
+
+```text
+Installed 2025 files to chome/.local/share/sideshow/packs/bmad/6.12.4
+  Added Read(chome/.local/share/sideshow/packs/) to chome/.claude/settings.json
+Synced 102 artifacts across all bindings
+skills under ccfg/skills: 0 (the directory does not exist)
+skills under chome/.claude/skills: 102
+```
+
+The Read rule written is `Read(<scratch>/chome/.local/share/sideshow/packs/)` in `chome/.claude/settings.json`; `ccfg` has no `settings.json`. So with this sideshow build, `CLAUDE_CONFIG_DIR` is ignored for both the skills and the permission. That is the behavior the 6.12.1 record lists as F-g (aae-orc-89cxz), a sideshow matter and not a pack difference.
+
+Side C against side B, same bytes after the home path is normalized (`B` is `packhome/.claude/skills`, `C` is `chome/.claude/skills`):
+
+```sh
+python3 -I - <<'EOF'
+import os
+def files(r):
+    o = {}
+    for d, _, fs in os.walk(r, followlinks=True):
+        for f in fs:
+            o[os.path.relpath(os.path.join(d, f), r)] = os.path.join(d, f)
+    return o
+b, c = files("packhome/.claude/skills"), files("chome/.claude/skills")
+R = os.getcwd().encode()
+eq = sum(1 for k in b if k in c
+         and open(b[k], "rb").read().replace(R + b"/packhome", b"@H")
+          == open(c[k], "rb").read().replace(R + b"/chome", b"@H"))
+print("B", len(b), "C", len(c), "equal after home normalization", eq)
+EOF
+```
+
+```text
+B 1943 C 1943 equal after home normalization 1943
+```
 
 Comparisons 1 to 7 follow the 6.12.1 method: comparisons 1 to 7 passed; comparison 8 not run. Comparison 8 (harness observations) was not repeated, and this record makes no claim about it. The 6.12.1 harness findings (F-j, F-k) concern sideshow's permission rule and skill shadowing, not bytes the pack ships.
 
@@ -77,6 +131,17 @@ with fallback block 103 store-path only 86
 files carrying {project-root}/_bmad/ that are byte-equal in both trees: 41
 residual after declared rewrite: 0
 ```
+
+**Controls for the script.** The script exits 0 only when the skill names are equal, no file exists on one side only, and the residual is 0; an empty tree exits 2. Each was checked on a copy of the bound tree (`cp -RL`), with the script's own exit status read bare:
+
+| Control | Change to the bound copy | Exit | Reported |
+|---|---|---|---|
+| positive | none | 0 | `only native 0 only bound 0`, residual 0 |
+| 1 | one file removed | 1 | `files bound 1942 only native 1` |
+| 2 | one file added | 1 | `files bound 1944 only bound 1` |
+| 3 | an extra skill directory | 1 | `skill names equal: False` |
+| 4 | one line appended to one `SKILL.md` | 1 | `residual after declared rewrite: 1` |
+| 5 | empty bound tree | 2 | `an empty tree is a failure` |
 
 **Reconciling 86 with a count of about 94.** The two numbers count different things. Of the 95 non-`SKILL.md` markdown files in the native tree that contain `{project-root}/_bmad/`, 79 differ in the pack (the rewrite changed them) and 16 are byte-equal to native. The 86 above is the count of differing files that carry no fallback block: the 79 markdown files plus 8 `workflow.yaml` files, less one markdown file that does carry the block (103 files carry it: the 102 `SKILL.md` files and that one). A raw count of files containing the string therefore reads higher than 86, since it includes the 16 the rewrite did not touch.
 

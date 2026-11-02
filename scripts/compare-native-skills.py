@@ -6,7 +6,9 @@ usage: compare-native-skills.py NATIVE_SKILLS BOUND_SKILLS STORE_VERSION_DIR
 Reports the skill-name sets, the files that differ, and the residual after
 reversing the declared rewrite on the bound side: the store path written back
 to {project-root}/_bmad/, and the appended sideshow fallback-resolution block
-removed. Exit 0 when the residual is 0, 1 otherwise. Read-only.
+removed. Exit 0 only when the skill names are equal, no file exists on one
+side only, and the residual is 0; exit 1 otherwise; exit 2 on an empty tree.
+Read-only.
 """
 import collections
 import os
@@ -44,10 +46,14 @@ def kind(k):
 def main():
     nat, bnd, store = sys.argv[1:4]
     a, b = files(nat), files(bnd)
-    print("skill names equal:", sorted(os.listdir(nat)) == sorted(os.listdir(bnd)),
-          len(os.listdir(nat)))
+    names_equal = sorted(os.listdir(nat)) == sorted(os.listdir(bnd))
+    print("skill names equal:", names_equal, len(os.listdir(nat)))
+    only = set(a) ^ set(b)
     print("files native", len(a), "bound", len(b),
           "only native", len(set(a) - set(b)), "only bound", len(set(b) - set(a)))
+    if not a or not b:
+        print("an empty tree is a failure")
+        return 2
     diff = [k for k in sorted(set(a) & set(b)) if text(a[k]) != text(b[k])]
     print("differing files", len(diff), dict(collections.Counter(map(kind, diff))))
     sp = store.rstrip("/") + "/"
@@ -65,7 +71,7 @@ def main():
     print("residual after declared rewrite:", len(bad))
     for k in bad[:20]:
         print("  residual:", k)
-    return 1 if bad else 0
+    return 1 if (bad or only or not names_equal) else 0
 
 
 if __name__ == "__main__":
