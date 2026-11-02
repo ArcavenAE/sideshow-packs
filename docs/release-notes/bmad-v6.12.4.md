@@ -69,6 +69,10 @@ files.
   pack does not rename those files. The old-to-new list is in the
   [6.12.0 notes](https://github.com/ArcavenAE/sideshow-packs/blob/main/docs/release-notes/bmad-v6.12.0.md),
   which also point back to the 6.11.0 table.
+- **`bmad-build` and `bmad-build-auto` stop with an ambiguous-config HALT in
+  a repo bound with gds.** Both `bmm` and `gds` define `implementation_artifacts`
+  and `planning_artifacts`, and `render_skill.py` halts when a short key
+  matches more than one module. Native behavior has not been compared yet.
 - **`_bmad/custom/` is empty in a bound repo (D-3).** A native install seeds
   two commented template files there (`config.toml`, `config.user.toml`);
   `sideshow project init` creates the directory empty. The templates are all
