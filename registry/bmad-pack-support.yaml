@@ -105,12 +105,15 @@ validated:
       build (run 41455632526; sign=false publish=false allow_unsupported=true;
       explicit pins, see the wrinkle registry-module-pins) checked by
       scripts/verify-artifact.sh against the published bmad-v6.12.0-r2
-      file-manifest.csv. No native-install comparison was run; the published
-      r2 stands in for the oracle of docs/design/bmad-v6.12.1-native-parity.md
-      because it is the previous release and the base the runbook's step 3
-      names, and the delta against it was attributed by path, so the tea pin
-      change and the skill changes of four releases are separated, not
-      mixed. Both runs were dispatches on main with allow_unsupported=true,
+      file-manifest.csv. A native-install comparison was then run on the same
+      test artifact and is recorded in
+      docs/design/bmad-v6.12.4-native-parity.md (method of
+      docs/design/bmad-v6.12.1-native-parity.md): 102 of 102 skills, 189
+      differing skill files with zero residual after the declared rewrite,
+      156 of 158 resolved-config keys. Comparisons 1 to 7 passed;
+      comparison 8 (harness observations) not run. The delta against the published r2
+      was attributed by path, so the tea pin change and the skill changes of
+      four releases are separated, not mixed. Both runs were dispatches on main with allow_unsupported=true,
       so neither exercised this bracket; scripts/check-support.sh bmad
       6.12.4 was run at the head of the PR that carries this edit. Only 6.12.4 was built; 6.12.2 and 6.12.3 were
       diffed, not built.
