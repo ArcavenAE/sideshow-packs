@@ -5,7 +5,8 @@ releases as drafts with no body (`build-pack.yml`, `action-gh-release`), so
 this text is authored, not generated.
 
 Figures below come from the signed release build (run 41545200921) and were
-checked against the downloaded assets.
+checked against the downloaded assets, except the parity figures, which come
+from test build run 41455632526.
 
 ---
 
