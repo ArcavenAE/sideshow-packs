@@ -17,9 +17,9 @@ Habits from the 6.12.4 review:
 - Say which build each figure comes from: the signed release build, or the
   test build.
 - State an effect only as strongly as you observed it. For a claim about what
-  happens (a file is ignored, a skill halts), run it, and give the setup and
-  result in the notes; if you inferred it from the pack contents, say
-  "inferred, not run".
+  happens (a file is ignored, a skill halts), run it, and show the
+  commands and their output in the notes, or say where they are; if you
+  inferred it from the pack contents, say "inferred, not run".
 - Make a claim a consumer can check, with the command that checks it. For
   activation: `sideshow list` marks the active version with `*`, and
   `sideshow install --no-activate` installs without switching.
