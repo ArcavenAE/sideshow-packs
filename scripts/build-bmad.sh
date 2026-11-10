@@ -156,6 +156,22 @@ elif [[ "${BMAD_PINS}" == "auto" ]]; then
     fi
     AS_OF_EPOCH="$(iso_to_epoch "${AS_OF_DATE}")"
     echo "[build-bmad] pins: resolving as-of ${AS_OF_DATE}"
+    # The installer's own registry can hold a module below the as-of tag
+    # (bmad-modules.yaml `pin:`, v6.12.2+). --pin outranks it, so cap-pin.sh
+    # lowers an as-of tag to the registry pin. A failed clone is fatal: a
+    # silent skip would bring the uncapped tag back. A tag without the file
+    # means no registry, so no cap.
+    REG_TMP="$(mktemp -d -t bmad-registry-XXXXXX)"
+    git clone --quiet --bare --filter=blob:none --depth 1 --branch "v${BMAD_VERSION}" \
+        https://github.com/bmad-code-org/BMAD-METHOD "${REG_TMP}/repo.git" \
+        || { echo "[build-bmad] FATAL: cannot read bmad-method v${BMAD_VERSION} to find its registry pins"; rm -rf "${REG_TMP}"; exit 1; }
+    bash "${SCRIPT_DIR}/read-registry.sh" "${REG_TMP}/repo.git" "${REG_TMP}/bmad-modules.yaml" \
+        || { echo "[build-bmad] FATAL: cannot read bmad-modules.yaml from bmad-method v${BMAD_VERSION}"; rm -rf "${REG_TMP}"; exit 1; }
+    if [[ -s "${REG_TMP}/bmad-modules.yaml" ]]; then
+        echo "[build-bmad] registry: bmad-modules.yaml read from v${BMAD_VERSION}"
+    else
+        echo "[build-bmad] registry: no bmad-modules.yaml at v${BMAD_VERSION}, as-of tags are not capped"
+    fi
     IFS=',' read -ra MODULE_LIST <<< "${BMAD_MODULES}"
     for code in "${MODULE_LIST[@]}"; do
         repo="$(module_repo "$code")"
@@ -165,10 +181,17 @@ elif [[ "${BMAD_PINS}" == "auto" ]]; then
             echo "[build-bmad] FATAL: no semver tag for ${code} (${repo}) at or before ${AS_OF_DATE}"
             exit 1
         fi
+        capped="$(bash "${SCRIPT_DIR}/cap-pin.sh" "$code" "$tag" "${REG_TMP}/bmad-modules.yaml")" \
+            || { echo "[build-bmad] FATAL: cap-pin.sh failed for ${code}"; rm -rf "${REG_TMP}"; exit 1; }
+        if [[ "${capped}" != "${tag}" ]]; then
+            echo "[build-bmad] pin ${code}: as-of ${tag} is above the installer registry pin, using ${capped}"
+            tag="${capped}"
+        fi
         echo "[build-bmad] pin ${code}=${tag}"
         PIN_FLAGS+=(--pin "${code}=${tag}")
         REQUESTED_PINS_JSON="$(jq -c --arg k "$code" --arg v "$tag" '. + {($k): $v}' <<< "$REQUESTED_PINS_JSON")"
     done
+    rm -rf "${REG_TMP}"
 else
     PIN_POLICY="explicit"
     IFS=',' read -ra PIN_LIST <<< "${BMAD_PINS}"

@@ -57,3 +57,6 @@ jobs:
 
       - name: Run bmad identity block tests
         run: bash scripts/test-bmad-identity-block.sh
+
+      - name: Run cap-pin tests
+        run: bash scripts/test-cap-pin.sh
