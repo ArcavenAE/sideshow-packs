@@ -51,3 +51,6 @@ jobs:
 
       - name: Run exec-manifest tests
         run: bash scripts/test-exec-manifest.sh
+
+      - name: Run render-skill patch tests
+        run: bash scripts/test-patch-render-skill.sh

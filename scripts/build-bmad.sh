@@ -254,6 +254,21 @@ python3 "${SCRIPT_DIR}/neutralize-ci-identity.py" \
     --pack-stage "${PACK_STAGE}" \
     --sentinel-user "${CI_USER_SENTINEL}"
 
+# 3a-patch. One narrow edit to upstream scripts/render_skill.py: a short config
+# key defined with equal values in several modules resolves to one value
+# instead of halting (bmad-build and bmad-build-auto cannot start where bmm and
+# gds are both installed; sideshow-packs#65, upstream BMAD-METHOD#2718).
+# Unequal values still halt. Fail-closed: if the expected upstream text is not
+# found exactly once the build stops, which is the cue to check whether upstream
+# fixed it and to remove this step. Runs before the census refresh so the
+# census row for the file is refreshed with the rest. The record goes into
+# install.meta and the in-store pack.yaml. Remove with upstream's fix.
+echo "[build-bmad] patching render_skill.py for equal duplicate config keys"
+PATCH_RECORD="${WORK}/patches.json"
+python3 "${SCRIPT_DIR}/patch-render-skill-dup-keys.py" \
+    --pack-stage "${PACK_STAGE}" \
+    --record "${PATCH_RECORD}"
+
 # 3a'. Refresh bmad's own census (_config/files-manifest.csv) for the files
 # the neutralizer just edited, so a clean install passes sideshow's
 # store-content-census (sideshow-packs#41). Records each rewrite, with the hash
@@ -338,6 +353,10 @@ fi
     yq -r '.modules[] | select(.source == "external") | "    - name: " + .name + "\n      version: " + .version' "${STAGE_MANIFEST}"
 } >> "${PACK_STAGE}/pack.yaml"
 cat "${CENSUS_RECORD}" >> "${PACK_STAGE}/pack.yaml"
+{
+    echo ""
+    yq -p json -o yaml '{"patches": .}' "${PATCH_RECORD}"
+} >> "${PACK_STAGE}/pack.yaml"
 
 # 3d. Re-run the census over the final staged tree and fail closed on any
 # mismatch, so an edit made after the refresh cannot ship a failing census.
@@ -464,6 +483,10 @@ fi
 #   0.1.3 — added post_install (records the CI-identity neutralization;
 #           aae-orc-988gh user_name, aae-orc-m79qn project_name).
 #           Additive only.
+#   0.1.4 - added patches (the build-time edits to upstream bytes, one row
+#           each: file, upstream and patched sha256, reason, upstream issue,
+#           and when it is removed; sideshow-packs#65). An empty list means
+#           the pack carries upstream bytes. Additive only.
 PRODUCED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 META="${OUT_DIR}/install.meta.yaml"
 META_JSON="${OUT_DIR}/install.meta.json"
@@ -494,8 +517,9 @@ jq -n \
   --arg signing_status "${SIGNING_STATUS}" \
   --arg packaging_revision "${PACK_REVISION}" \
   --arg ci_user_sentinel "${CI_USER_SENTINEL}" \
+  --argjson patches "$(cat "${PATCH_RECORD}")" \
   '{
-    schema_version: "0.1.3",
+    schema_version: "0.1.4",
     schema_stability: "draft",
     pack: ({
       name: "bmad",
@@ -535,6 +559,7 @@ jq -n \
       removed_keys: ["user_name", "project_name"],
       rationale: ("installer answers reflect the CI build environment, not the consumer; the user_name sentinel (" + $ci_user_sentinel + ") and the working-directory project_name are removed from the staged config before packaging so the pack ships no build identity (aae-orc-988gh, aae-orc-m79qn)")
     },
+    patches: $patches,
     acquisition: {
       method: "npm-composition",
       release_line: "stable"
