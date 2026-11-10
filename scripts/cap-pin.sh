@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cap-pin.sh — hold an as-of module tag to the installer's registry pin.
+# cap-pin.sh: hold an as-of module tag to the installer's registry pin.
 #
 # Usage: cap-pin.sh <module-code> <as-of-tag> <bmad-modules.yaml>
 #
@@ -21,7 +21,9 @@ if [[ ! -s "${reg}" ]]; then
     exit 0
 fi
 
-pin="$(CODE="${code}" yq -r '[.modules[] | select(.code == strenv(CODE)) | .pin // ""] | .[0] // ""' "${reg}" 2>/dev/null || true)"
+# A yq failure (malformed file) ends the script through set -e; it must not
+# read as "no pin".
+pin="$(CODE="${code}" yq -r '[.modules[] | select(.code == strenv(CODE)) | .pin // ""] | .[0] // ""' "${reg}")"
 if [[ -z "${pin}" || "${pin}" == "null" ]]; then
     echo "${asof}"
     exit 0

@@ -165,10 +165,11 @@ elif [[ "${BMAD_PINS}" == "auto" ]]; then
     git clone --quiet --bare --filter=blob:none --depth 1 --branch "v${BMAD_VERSION}" \
         https://github.com/bmad-code-org/BMAD-METHOD "${REG_TMP}/repo.git" \
         || { echo "[build-bmad] FATAL: cannot read bmad-method v${BMAD_VERSION} to find its registry pins"; rm -rf "${REG_TMP}"; exit 1; }
-    if git -C "${REG_TMP}/repo.git" show "HEAD:bmad-modules.yaml" > "${REG_TMP}/bmad-modules.yaml" 2>/dev/null; then
+    bash "${SCRIPT_DIR}/read-registry.sh" "${REG_TMP}/repo.git" "${REG_TMP}/bmad-modules.yaml" \
+        || { echo "[build-bmad] FATAL: cannot read bmad-modules.yaml from bmad-method v${BMAD_VERSION}"; rm -rf "${REG_TMP}"; exit 1; }
+    if [[ -s "${REG_TMP}/bmad-modules.yaml" ]]; then
         echo "[build-bmad] registry: bmad-modules.yaml read from v${BMAD_VERSION}"
     else
-        : > "${REG_TMP}/bmad-modules.yaml"
         echo "[build-bmad] registry: no bmad-modules.yaml at v${BMAD_VERSION}, as-of tags are not capped"
     fi
     IFS=',' read -ra MODULE_LIST <<< "${BMAD_MODULES}"
@@ -180,7 +181,8 @@ elif [[ "${BMAD_PINS}" == "auto" ]]; then
             echo "[build-bmad] FATAL: no semver tag for ${code} (${repo}) at or before ${AS_OF_DATE}"
             exit 1
         fi
-        capped="$(bash "${SCRIPT_DIR}/cap-pin.sh" "$code" "$tag" "${REG_TMP}/bmad-modules.yaml")"
+        capped="$(bash "${SCRIPT_DIR}/cap-pin.sh" "$code" "$tag" "${REG_TMP}/bmad-modules.yaml")" \
+            || { echo "[build-bmad] FATAL: cap-pin.sh failed for ${code}"; rm -rf "${REG_TMP}"; exit 1; }
         if [[ "${capped}" != "${tag}" ]]; then
             echo "[build-bmad] pin ${code}: as-of ${tag} is above the installer registry pin, using ${capped}"
             tag="${capped}"

@@ -47,5 +47,45 @@ else
     echo "FAIL: build-bmad.sh does not call cap-pin.sh"
 fi
 
+# A malformed registry must fail the script, not read as "no pin".
+printf 'modules: [unclosed\n' > "${DIR}/bad.yaml"
+bash "${CAP}" tea v3.0.2 "${DIR}/bad.yaml" >/dev/null 2>&1
+check_eq "a malformed registry file fails cap-pin.sh" "nonzero" "$([[ $? -ne 0 ]] && echo nonzero || echo zero)"
+
+# read-registry.sh: path present, path absent, and a blob that cannot be fetched.
+# Fixture repos are scratch data under ${DIR}; commits use the host's own git
+# config for signing, and only the author identity is set, through the environment.
+READ="${HERE}/read-registry.sh"
+export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.invalid GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.invalid
+SRC="${DIR}/src"
+git init -q "${SRC}"
+git -C "${SRC}" config uploadpack.allowFilter true
+git -C "${SRC}" config uploadpack.allowAnySHA1InWant true
+cp "${FIX}" "${SRC}/bmad-modules.yaml"
+git -C "${SRC}" add bmad-modules.yaml
+git -C "${SRC}" commit -q -m with
+git clone -q --bare --filter=blob:none "file://${SRC}" "${DIR}/with.git"
+bash "${READ}" "${DIR}/with.git" "${DIR}/with.out" >/dev/null 2>&1
+check_eq "read-registry returns the file when the path exists" "0 same" "$? $(cmp -s "${DIR}/with.out" "${FIX}" && echo same || echo differ)"
+
+# Same clone with its origin removed: the tree is local, the blob is not.
+git clone -q --bare --filter=blob:none "file://${SRC}" "${DIR}/broken.git"
+git -C "${DIR}/broken.git" remote set-url origin "file://${DIR}/gone"
+bash "${READ}" "${DIR}/broken.git" "${DIR}/broken.out" >/dev/null 2>&1
+check_eq "read-registry fails when the blob cannot be fetched" "nonzero" "$([[ $? -ne 0 ]] && echo nonzero || echo zero)"
+
+git -C "${SRC}" rm -q bmad-modules.yaml
+git -C "${SRC}" commit -q -m without
+git clone -q --bare --filter=blob:none "file://${SRC}" "${DIR}/without.git"
+bash "${READ}" "${DIR}/without.git" "${DIR}/without.out" >/dev/null 2>&1
+check_eq "read-registry yields an empty file, rc 0, when the path is absent" "0 empty" "$? $([[ ! -s "${DIR}/without.out" && -f "${DIR}/without.out" ]] && echo empty || echo other)"
+
+if grep -qF 'read-registry.sh' "${HERE}/build-bmad.sh"; then
+    pass=$((pass + 1))
+else
+    fail=$((fail + 1))
+    echo "FAIL: build-bmad.sh does not call read-registry.sh"
+fi
+
 echo "cap-pin: ${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]
