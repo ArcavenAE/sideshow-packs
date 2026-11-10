@@ -52,6 +52,16 @@ printf 'modules: [unclosed\n' > "${DIR}/bad.yaml"
 bash "${CAP}" tea v3.0.2 "${DIR}/bad.yaml" >/dev/null 2>&1
 check_eq "a malformed registry file fails cap-pin.sh" "nonzero" "$([[ $? -ne 0 ]] && echo nonzero || echo zero)"
 
+# A registry pin that is not a plain release tag cannot be ordered by sort -V,
+# so it must stop the script instead of being compared.
+for badpin in main v1.27.2-rc.1 v1.27 latest; do
+    printf 'modules:\n  m:\n    code: tea\n    pin: %s\n' "${badpin}" > "${DIR}/badpin.yaml"
+    out="$(bash "${CAP}" tea v3.0.2 "${DIR}/badpin.yaml" 2>&1)"
+    rc=$?
+    check_eq "registry pin '${badpin}' fails loudly" "nonzero" "$([[ ${rc} -ne 0 ]] && echo nonzero || echo zero)"
+    check_eq "registry pin '${badpin}' names the pin in the error" "yes" "$(grep -qF -- "${badpin}" <<< "${out}" && echo yes || echo no)"
+done
+
 # read-registry.sh: path present, path absent, and a blob that cannot be fetched.
 # Fixture repos are scratch data under ${DIR}; commits use the host's own git
 # config for signing, and only the author identity is set, through the environment.
