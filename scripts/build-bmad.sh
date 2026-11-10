@@ -283,6 +283,9 @@ python3 "${SCRIPT_DIR}/bmad-census.py" refresh \
 # 3b'. Derive the runtime links from the installer's own tree (F-d).
 RUNTIME_LINKS="$(python3 "${SCRIPT_DIR}/bmad-runtime-links.py" --bmad-dir "${INSTALL_ROOT}/_bmad")"
 
+# 3b''. The identity block: which user-layer keys the runtime reads (aae-orc-aht7g).
+IDENTITY_BLOCK="$(bash "${SCRIPT_DIR}/bmad-identity-block.sh")"
+
 # 3b. Emit pack.yaml inside the pack (consumed by sideshow's distribute
 # layer for consumer-repo convention enforcement — aae-orc-794h).
 cat > "${PACK_STAGE}/pack.yaml" <<YAML
@@ -290,7 +293,7 @@ cat > "${PACK_STAGE}/pack.yaml" <<YAML
 # See: sideshow/docs/consumer-repo-convention.md (aae-orc-794h).
 name: bmad
 version: ${BMAD_VERSION}
-schema_version: 0.2.0
+schema_version: 0.3.0
 
 distribute:
   # Customization bridge (bmad 6.4+ reads _bmad/custom/ at runtime).
@@ -326,6 +329,9 @@ ${RUNTIME_LINKS}
     # Personal config layer (upstream four-file intent: config.user.toml
     # is per-person, config.toml is team-committed).
     - /_bmad-custom/config.user.toml
+
+# Keys the runtime reads from the user layer; sideshow seeds them at project init.
+${IDENTITY_BLOCK}
 YAML
 
 # 3c. Composition disclosure in pack.yaml (schema 0.2.0, aae-orc-soh8q).
