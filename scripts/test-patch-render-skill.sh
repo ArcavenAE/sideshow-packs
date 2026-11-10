@@ -10,7 +10,8 @@ set -uo pipefail
 
 SD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PATCH="${SD}/patch-render-skill-dup-keys.py"
-DIR="$(mktemp -d -t render-patch-test-XXXXXX)"
+DIR="$(mktemp -d -t render-patch-test-XXXXXX)" || exit 1
+[[ -n "$DIR" && -d "$DIR" ]] || { echo "FATAL: mktemp gave no usable directory" >&2; exit 1; }
 trap 'rm -rf "$DIR"' EXIT
 
 pass=0
