@@ -134,9 +134,10 @@ if [[ -n "${TARBALL}" ]]; then
                     && ok "pack.yaml external modules match install.meta ($(wc -l <<< "${M_EXT}" | tr -d ' '))" \
                     || bad "pack.yaml external modules [$(tr '\n' ' ' <<< "${P_EXT}")] differ from install.meta [$(tr '\n' ' ' <<< "${M_EXT}")]"
                 PSV="$(yq -r '.schema_version // ""' <<< "${PYC}")"
-                [[ "${PSV}" == "0.2.0" ]] \
+                # 0.2.0 is the published composition shape; 0.3.0 adds the identity block.
+                [[ "${PSV}" == "0.2.0" || "${PSV}" == "0.3.0" ]] \
                     && ok "pack.yaml schema_version ${PSV}" \
-                    || bad "pack.yaml carries a composition block under schema_version ${PSV:-none}; expected 0.2.0"
+                    || bad "pack.yaml carries a composition block under schema_version ${PSV:-none}; expected 0.2.0 or 0.3.0"
             fi
         fi
     else
