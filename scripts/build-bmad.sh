@@ -292,6 +292,18 @@ python3 "${SCRIPT_DIR}/patch-render-skill-dup-keys.py" \
     --pack-stage "${PACK_STAGE}" \
     --record "${PATCH_RECORD}"
 
+# 3a-patch'. Bind every wds skill and the wds global commands under the
+# bmad-wds- prefix, the prefix upstream's own wds help catalog uses (wds ships
+# wds-* plus the bare names memory and sync, which shadow Claude Code built-ins;
+# upstream bmad-method-wds-expansion#38, aae-orc-hdwf4). Rewrites skill names,
+# skill: references, the manifest rows, the [agents.*] tables and the command
+# names, never module paths. A no-op once upstream ships prefixed names; remove
+# then. Appends its entry to the same patch record.
+echo "[build-bmad] binding wds skills under the bmad-wds- prefix"
+python3 "${SCRIPT_DIR}/patch-wds-skill-prefix.py" \
+    --pack-stage "${PACK_STAGE}" \
+    --record "${PATCH_RECORD}"
+
 # 3a'. Refresh bmad's own census (_config/files-manifest.csv) for the files
 # the neutralizer just edited, so a clean install passes sideshow's
 # store-content-census (sideshow-packs#41). Records each rewrite, with the hash
