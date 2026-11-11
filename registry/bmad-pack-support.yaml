@@ -246,13 +246,24 @@ wrinkles:
       those names; sync's last-writer-wins would silently shadow.
     adaptation: >-
       Upstream issue filed: bmad-code-org/bmad-method-wds-expansion#38
-      (rename to wds-memory / wds-sync). Inline patching deliberately
-      deferred — content renames are overlay territory (10vq).
+      (rename to wds-memory / wds-sync). Inline patching was first
+      deferred to overlays (10vq); the overlay is still unbuilt, and the
+      operator ruled a pack-time patch on 2026-11-11 after `/memory`
+      ran the wds backend instead of the Claude Code built-in.
+      scripts/patch-wds-skill-prefix.py binds every wds skill (the 13
+      wds-* names as well as memory and sync) and the six global commands
+      the wds sync tool installs under bmad-wds-, the prefix upstream's
+      own wds/module-help.csv uses. It rewrites skill names, skill:
+      references, skill-manifest rows, [agents.*] tables and command
+      names, never module paths, and is a no-op when upstream ships
+      prefixed names. Upstream's naming wins once it lands; remove the
+      step then. Shipped from bmad-v6.10.0-r3 and bmad-v6.12.4-r3.
       Sideshow-side sync-time collision detection ticketed
       (cross-pack owner check against the sync-manifest ledger).
     references:
       - expanded re-issue 2026-07-12 (bmb+wds composition)
       - https://github.com/bmad-code-org/bmad-method-wds-expansion/issues/38
+      - aae-orc-hdwf4
 
   - id: runtime-skills-write-project-files
     introduced_in: 6.7.0

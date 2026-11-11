@@ -55,6 +55,9 @@ jobs:
       - name: Run render-skill patch tests
         run: bash scripts/test-patch-render-skill.sh
 
+      - name: Run wds skill prefix patch tests
+        run: bash scripts/test-patch-wds-skill-prefix.sh
+
       - name: Run bmad identity block tests
         run: bash scripts/test-bmad-identity-block.sh
 
