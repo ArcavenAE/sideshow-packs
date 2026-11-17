@@ -11,6 +11,12 @@ content: |
   it because setup-node pins node 24 (build-pack.yml:74). The workaround
   is one command, `mise exec node@24.18.0 -- ...`.
 
+  Update (2026-11-17): build-pack.yml:74 now reads `node-version: '26'`
+  (#58, dde00e1, 2026-11-02), so the "node 24" above is stale and the
+  workaround in finding-001 selects a different major from CI. The repo
+  still pins no node (no mise.toml, .tool-versions or .node-version).
+  The drift is a second instance of the gap this question describes.
+
   A local build is the pre-release check (the -r2 build-ahead,
   aae-orc-jxaij, ran one), so a local run that differs from CI in its
   toolchain weakens the check it exists to make.

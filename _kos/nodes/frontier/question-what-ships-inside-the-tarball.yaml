@@ -25,12 +25,20 @@ content: |
   census after the neutralizer, re-runs it on the staged tree, and
   records the rewrites there (sideshow-packs#44).
 
+  Update (2026-11-17), merged work since the findings above:
+  - exec-manifest.txt now travels inside the pack and verify-artifact.sh
+    asserts the in-tarball copy equals the release asset (#50, 6ec3739,
+    2026-10-07). The exec-manifest gap in finding-002 is closed.
+  - The build now refreshes the bmad census hashes after the neutralizer
+    and fails closed (#46, e30e4a1, 2026-10-05). The doctor census
+    failure in finding-004 describes the state before this fix.
+  - verify-artifact.sh is still not called by any workflow under
+    .github, so finding-003 stands.
+
   Open:
-  - Should every output that an installer may check (exec manifest,
-    install.meta facts) travel inside the tarball?
+  - Should every output that an installer may check beyond the exec
+    manifest (install.meta facts) travel inside the tarball?
   - Should CI run the structural checks in verify-artifact.sh?
-  - Should any step that edits staged content after the upstream
-    installer refresh the upstream census it invalidates?
 edges: []
 provenance:
   created_by: agent
