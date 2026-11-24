@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build-wardrobe.sh — build the wardrobe release artifact (SP1, design
+# build-wardrobe.sh: build the wardrobe release artifact (SP1, design
 # docs/design/2026-11-19-i626-vendor-packs-as-marvel-teams.md, section 4.6).
 #
 # wardrobe is ours: acquisition is a git clone at the tag wardrobe-v<version>,
