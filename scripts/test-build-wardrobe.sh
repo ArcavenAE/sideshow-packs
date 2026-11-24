@@ -70,7 +70,8 @@ check "T1b dispatch pack options include wardrobe" "options: [bmad, vsdd-factory
 check "T1c build step has a wardrobe arm" "bash scripts/build-wardrobe.sh" "${wf}"
 
 # 2. A fixture build emits the tarball and its sidecars.
-FX="${DIR}/fx"
+mkdir -p "${DIR}/fx"
+FX="$(cd "${DIR}/fx" && pwd -P)"   # canonical, so src_override compares as recorded
 make_fixture "${FX}" 0.3.0 0.3.0
 OUT="${DIR}/out"
 log="$(WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${OUT}" bash "${BUILD}" 2>&1)"
@@ -97,7 +98,9 @@ check "T3d exec-manifest lists scripts/pack.sh" "scripts/pack.sh" "$(cat "${R}/e
 
 # 4. install.meta.yaml binds the artifact and the source commit.
 M="${OUT}/install.meta.yaml"
-sha() { if command -v sha256sum >/dev/null; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
+sha() { # a missing file yields a marker, never "", so an unbuilt output cannot match an empty field
+    [[ -f "$1" ]] || { echo "<missing:$(basename "$1")>"; return; }
+    if command -v sha256sum >/dev/null; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi; }
 check_eq "T4a pack.name" "wardrobe" "$(yq '.pack.name' "${M}" 2>/dev/null)"
 check_eq "T4b pack.version" "0.3.0" "$(yq '.pack.version' "${M}" 2>/dev/null)"
 check_eq "T4c upstream.tag" "wardrobe-v0.3.0" "$(yq '.upstream.tag' "${M}" 2>/dev/null)"
@@ -116,12 +119,14 @@ make_fixture "${FX2}" 0.2.0 0.3.0
 out="$(WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX2}" OUT_DIR="${DIR}/out2" bash "${BUILD}" 2>&1)"
 rc=$?
 check_eq "T5a pack.yaml version != tag version exits 1" "1" "${rc}"
-check "T5b names the version mismatch" "version" "${out}"
+check "T5b names the pack.yaml version" "0.2.0" "${out}"
+check "T5b2 names the requested version" "0.3.0" "${out}"
 check_eq "T5c no tarball after a mismatch" "no" "$([[ -e "${DIR}/out2/wardrobe-0.3.0-arcaven.tar.gz" ]] && echo yes || echo no)"
 
 out="$(WARDROBE_VERSION=9.9.9 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out3" bash "${BUILD}" 2>&1)"
 rc=$?
 check_eq "T5d a missing tag exits 1" "1" "${rc}"
+check "T5e names the missing tag" "wardrobe-v9.9.9" "${out}"
 
 echo "${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]
