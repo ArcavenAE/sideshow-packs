@@ -42,6 +42,28 @@ done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Commit pin (review of sideshow-packs#80). A tag push passes no expected SHA, so a
+# signing build must find one in the register, as build-vsdd-factory.sh does,
+# or it would sign whatever the tag names right now. A signing build reads the
+# register from its fixed path only: an env-named register would let the
+# caller pick the pin it is checked against. The override is for unsigned,
+# test-only builds.
+if [[ "${COSIGN}" == "1" && -n "${WARDROBE_REGISTER:-}" ]]; then
+    echo "[build-wardrobe] FATAL: WARDROBE_REGISTER is refused for a signing build; the register is read from its fixed path"
+    exit 1
+fi
+REGISTER="${WARDROBE_REGISTER:-${SCRIPT_DIR}/../registry/wardrobe-pack-support.yaml}"
+if [[ -z "${EXPECTED_UPSTREAM_SHA}" && -f "${REGISTER}" ]]; then
+    EXPECTED_UPSTREAM_SHA="$(yq ".validated[] | select(.min == \"${WARDROBE_VERSION}\" and .max == \"${WARDROBE_VERSION}\") | .upstream_commit // \"\"" "${REGISTER}" 2>/dev/null | head -1)"
+    if [[ -n "${EXPECTED_UPSTREAM_SHA}" ]]; then
+        echo "[build-wardrobe] SHA pin from register: ${EXPECTED_UPSTREAM_SHA}"
+    fi
+fi
+if [[ "${COSIGN}" == "1" && -z "${EXPECTED_UPSTREAM_SHA}" ]]; then
+    echo "[build-wardrobe] FATAL: signing build with no upstream SHA pin (env, workflow input, or register upstream_commit)"
+    exit 1
+fi
+
 if [[ "${COSIGN}" == "1" && "${WARDROBE_SRC}" != "${CANONICAL_SRC}" ]]; then
     echo "[build-wardrobe] FATAL: signing build from a non-canonical src"
     exit 1
