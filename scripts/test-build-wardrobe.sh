@@ -128,5 +128,29 @@ rc=$?
 check_eq "T5d a missing tag exits 1" "1" "${rc}"
 check "T5e names the missing tag" "wardrobe-v9.9.9" "${out}"
 
+# 6. Signing needs a commit pin (review of #80): a tag push passes no pin, so a
+#    signing build with none would notarize whatever the tag names right now.
+out="$(COSIGN=1 WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out4" bash "${BUILD}" 2>&1)"
+rc=$?
+check_eq "T6a COSIGN=1 with no pin exits 1" "1" "${rc}"
+check "T6b names the missing pin" "no upstream SHA pin" "${out}"
+check_eq "T6c no tarball from a refused signing build" "no" "$([[ -e "${DIR}/out4/wardrobe-0.3.0-arcaven.tar.gz" ]] && echo yes || echo no)"
+
+out="$(COSIGN=1 EXPECTED_UPSTREAM_SHA="$(git -C "${FX}" rev-parse HEAD)" WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out5" bash "${BUILD}" 2>&1)"
+rc=$?
+check_eq "T6d COSIGN=1 with a non-canonical src exits 1" "1" "${rc}"
+check "T6e names the non-canonical src" "non-canonical" "${out}"
+
+out="$(EXPECTED_UPSTREAM_SHA=0000000000000000000000000000000000000000 WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out6" bash "${BUILD}" 2>&1)"
+rc=$?
+check_eq "T6f a pin that does not match exits 1" "1" "${rc}"
+check "T6g names the provenance mismatch" "provenance mismatch" "${out}"
+
+# 6h. With no env pin the register supplies it (same fallback as vsdd-factory).
+REG="${DIR}/register.yaml"
+printf 'validated:\n  - min: "0.3.0"\n    max: "0.3.0"\n    upstream_commit: "%s"\n' "$(git -C "${FX}" rev-parse HEAD)" > "${REG}"
+out="$(COSIGN=1 WARDROBE_REGISTER="${REG}" WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out7" bash "${BUILD}" 2>&1)"
+check "T6h the pin comes from the register" "SHA pin from register" "${out}"
+
 echo "${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]
