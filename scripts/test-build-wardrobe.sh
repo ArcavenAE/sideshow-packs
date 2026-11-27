@@ -128,6 +128,8 @@ rc=$?
 check_eq "T5d a missing tag exits 1" "1" "${rc}"
 check "T5e names the missing tag" "wardrobe-v9.9.9" "${out}"
 
+# Note: T6b assumes registry/wardrobe-pack-support.yaml has no 0.3.0 entry (it has
+# none at all today); a real entry for 0.3.0 would supply a pin and change T6a-c.
 # 6. Signing needs a commit pin (review of #80): a tag push passes no pin, so a
 #    signing build with none would notarize whatever the tag names right now.
 out="$(COSIGN=1 WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out4" bash "${BUILD}" 2>&1)"
@@ -170,6 +172,8 @@ out="$(COSIGN=1 WARDROBE_REGISTER="${REG1}" WARDROBE_VERSION=0.3.0 WARDROBE_SRC=
 rc=$?
 check_eq "T6m COSIGN=1 with WARDROBE_REGISTER exits 1" "1" "${rc}"
 check "T6n names the refused override" "WARDROBE_REGISTER" "${out}"
+case "${out}" in *non-canonical*) nc=present ;; *) nc=absent ;; esac
+check_eq "T6n2 the override refusal runs before the src refusal" "absent" "${nc}"
 
 echo "${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]
