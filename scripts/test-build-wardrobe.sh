@@ -134,6 +134,8 @@ out="$(COSIGN=1 WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out4
 rc=$?
 check_eq "T6a COSIGN=1 with no pin exits 1" "1" "${rc}"
 check "T6b names the missing pin" "no upstream SHA pin" "${out}"
+case "${out}" in *non-canonical*) nc=present ;; *) nc=absent ;; esac
+check_eq "T6b2 the pin check runs before the src refusal" "absent" "${nc}"
 check_eq "T6c no tarball from a refused signing build" "no" "$([[ -e "${DIR}/out4/wardrobe-0.3.0-arcaven.tar.gz" ]] && echo yes || echo no)"
 
 out="$(COSIGN=1 EXPECTED_UPSTREAM_SHA="$(git -C "${FX}" rev-parse HEAD)" WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out5" bash "${BUILD}" 2>&1)"
@@ -146,11 +148,28 @@ rc=$?
 check_eq "T6f a pin that does not match exits 1" "1" "${rc}"
 check "T6g names the provenance mismatch" "provenance mismatch" "${out}"
 
-# 6h. With no env pin the register supplies it (same fallback as vsdd-factory).
-REG="${DIR}/register.yaml"
-printf 'validated:\n  - min: "0.3.0"\n    max: "0.3.0"\n    upstream_commit: "%s"\n' "$(git -C "${FX}" rev-parse HEAD)" > "${REG}"
-out="$(COSIGN=1 WARDROBE_REGISTER="${REG}" WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out7" bash "${BUILD}" 2>&1)"
-check "T6h the pin comes from the register" "SHA pin from register" "${out}"
+# 6i. With no env pin the register supplies it (same fallback as vsdd-factory).
+#     Unsigned builds only: the fixture src cannot sign.
+REG0="${DIR}/register-bad.yaml"
+printf 'validated:\n  - min: "0.3.0"\n    max: "0.3.0"\n    upstream_commit: "0000000000000000000000000000000000000000"\n' > "${REG0}"
+out="$(WARDROBE_REGISTER="${REG0}" WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out7" bash "${BUILD}" 2>&1)"
+rc=$?
+check_eq "T6i a register pin that does not match exits 1" "1" "${rc}"
+check "T6j names the provenance mismatch" "provenance mismatch" "${out}"
+
+REG1="${DIR}/register-good.yaml"
+printf 'validated:\n  - min: "0.3.0"\n    max: "0.3.0"\n    upstream_commit: "%s"\n' "$(git -C "${FX}" rev-parse HEAD)" > "${REG1}"
+out="$(WARDROBE_REGISTER="${REG1}" WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out8" bash "${BUILD}" 2>&1)"
+rc=$?
+check_eq "T6k a matching register pin builds" "0" "${rc}"
+check_eq "T6l the matching register build wrote the tarball" "yes" "$([[ -f "${DIR}/out8/wardrobe-0.3.0-arcaven.tar.gz" ]] && echo yes || echo no)"
+
+# 6m. A signing build reads the register from its fixed path only: an env-named
+#     register would let the caller pick the pin it is checked against.
+out="$(COSIGN=1 WARDROBE_REGISTER="${REG1}" WARDROBE_VERSION=0.3.0 WARDROBE_SRC="${FX}" OUT_DIR="${DIR}/out9" bash "${BUILD}" 2>&1)"
+rc=$?
+check_eq "T6m COSIGN=1 with WARDROBE_REGISTER exits 1" "1" "${rc}"
+check "T6n names the refused override" "WARDROBE_REGISTER" "${out}"
 
 echo "${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]
