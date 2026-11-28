@@ -26,6 +26,7 @@ PREDICATE_TYPES = (
     "https://arcaven.com/sideshow/install-meta/v0.1.0",
 )
 STATEMENT_TYPE = "https://in-toto.io/Statement/v0.1"
+STATEMENT_TYPES = (STATEMENT_TYPE, "https://in-toto.io/Statement/v1")
 
 
 def fail(msg):
@@ -106,11 +107,20 @@ def cmd_new(a):
         stmt = json.loads(payload)
     except (KeyError, TypeError, ValueError):
         mismatch("no dsseEnvelope payload in %s" % a.bundle)
+    if not isinstance(stmt, dict):
+        mismatch("the payload is not an in-toto statement")
+    if stmt.get("_type") not in STATEMENT_TYPES:
+        mismatch("_type %r is not an in-toto statement type this job accepts" % (stmt.get("_type"),))
+    if stmt.get("predicateType") not in PREDICATE_TYPES:
+        mismatch("predicateType %r is not an install-meta type" % (stmt.get("predicateType"),))
     if stmt.get("predicate") != meta:
         mismatch("predicate differs from install.meta.json")
+    subjects = stmt.get("subject")
+    if not isinstance(subjects, list) or len(subjects) != 1:
+        mismatch("subject must list exactly one artifact, got %r" % (subjects,))
     try:
-        got = stmt["subject"][0]["digest"]["sha256"]
-    except (KeyError, IndexError, TypeError):
+        got = subjects[0]["digest"]["sha256"]
+    except (KeyError, TypeError):
         mismatch("subject has no sha256 digest")
     if got != a.sha256:
         mismatch("subject digest=%s tarball=%s" % (got, a.sha256))
