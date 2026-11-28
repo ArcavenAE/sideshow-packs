@@ -61,6 +61,9 @@ jobs:
       - name: Run re-attest provenance tests
         run: bash scripts/test-reattest-check.sh
 
+      - name: Run re-attest job tests
+        run: bash scripts/test-reattest-release.sh
+
       - name: Run bmad identity block tests
         run: bash scripts/test-bmad-identity-block.sh
 

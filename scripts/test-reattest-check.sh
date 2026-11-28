@@ -112,6 +112,43 @@ out="$(python3 -I "${CHECK}" new --bundle "${DIR}/new-badsub.json" --meta "${R3}
 check_eq "new bundle with a changed subject digest is refused (rc)" "1" "$?"
 check_has "changed subject says MISMATCH subject" "MISMATCH subject" "$out"
 
+# 5b. The statement itself is checked: a foreign predicateType, a wrong _type
+# and a second subject are each refused (architect read of 045187c, P1 and P3).
+mkstmt() { # outfile variant
+    python3 -I - "$1" "$2" "${R3}/install.meta.json" "${SHA}" <<'PY'
+import base64, json, sys
+out, variant, meta, sha = sys.argv[1:5]
+good = {"name": "x", "digest": {"sha256": sha}}
+other = {"name": "y", "digest": {"sha256": "f" * 64}}
+st = {"_type": "https://in-toto.io/Statement/v1", "subject": [good],
+      "predicateType": "https://arcaven.com/sideshow/install-meta", "predicate": json.load(open(meta))}
+if variant == "foreign-type":
+    st["predicateType"] = "https://example.com/other-predicate"
+elif variant == "wrong-statement-type":
+    st["_type"] = "https://example.com/Statement/v9"
+elif variant == "two-subjects-match-first":
+    st["subject"] = [good, other]
+elif variant == "two-subjects-match-second":
+    st["subject"] = [other, good]
+env = {"dsseEnvelope": {"payload": base64.b64encode(json.dumps(st).encode()).decode(), "payloadType": "application/vnd.in-toto+json", "signatures": []}}
+json.dump(env, open(out, "w"))
+PY
+}
+for pair in "foreign-type:predicateType" "wrong-statement-type:_type" "two-subjects-match-first:subject" "two-subjects-match-second:subject"; do
+    variant="${pair%%:*}"
+    field="${pair#*:}"
+    mkstmt "${DIR}/new-${variant}.json" "${variant}"
+    out="$(python3 -I "${CHECK}" new --bundle "${DIR}/new-${variant}.json" --meta "${R3}/install.meta.json" --sha256 "${SHA}" 2>&1)"
+    check_eq "${variant}: refused (rc)" "1" "$?"
+    check_has "${variant}: says MISMATCH ${field}" "MISMATCH ${field}" "$out"
+done
+
+# 5c. A statement for a different artifact name is a different statement.
+out="$(python3 -I "${CHECK}" statement --meta "${R3}/install.meta.json" --bundle "${R3}/old-rekor-bundle.json" \
+    --name "other-1.0.0-arcaven.tar.gz" --sha256 "${SHA}" 2>&1)"
+check_eq "a wrong --name is refused (rc)" "1" "$?"
+check_has "a wrong --name says MISMATCH" "MISMATCH" "$out"
+
 echo '{"base64Signature":"x","cert":"y","rekorBundle":{}}' > "${DIR}/new-legacy.json"
 python3 -I "${CHECK}" new --bundle "${DIR}/new-legacy.json" --meta "${R3}/install.meta.json" --sha256 "${SHA}" > "${DIR}/out.txt" 2>&1
 check_eq "a bundle with no dsseEnvelope is refused (rc)" "1" "$?"
