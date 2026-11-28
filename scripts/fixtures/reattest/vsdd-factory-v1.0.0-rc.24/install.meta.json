@@ -1,0 +1,49 @@
+{
+  "schema_version": "0.2.0",
+  "schema_stability": "draft",
+  "pack": {
+    "name": "vsdd-factory",
+    "version": "1.0.0-rc.24",
+    "produced_at": "2026-08-28T21:33:11Z",
+    "produced_by": "sideshow-packs/scripts/build-vsdd-factory.sh"
+  },
+  "upstream": {
+    "repo": "https://github.com/drbothen/vsdd-factory.git",
+    "tag": "v1.0.0-rc.24",
+    "commit_sha": "89f6f87cf476b1f57d979962eabf0d9b20a49e69",
+    "subtree_path": "plugins/vsdd-factory",
+    "subtree_sha": "d1c715a832dee39d2ce5ed5ad84e9cb6e9426e39",
+    "license": "MIT",
+    "license_file": "LICENSE",
+    "src_override": null,
+    "binary_provenance": "wasm hook-plugins from crates/hook-plugins/*, dispatcher binaries from crates/factory-dispatcher, built and committed by upstream release CI at this tag"
+  },
+  "acquisition": {
+    "method": "direct-tree",
+    "release_line": "prerelease"
+  },
+  "content": {
+    "file_count": 1276,
+    "executable_count": 117,
+    "wasm_hook_plugins": 38,
+    "dispatcher_binaries": 5,
+    "in_plugin_tests": true
+  },
+  "activation": {
+    "default_scope": "per-repo",
+    "per_repo_required": true,
+    "mechanism": "repo-bindings",
+    "binding_prefix": "vsdd"
+  },
+  "artifact": {
+    "tarball": "vsdd-factory-1.0.0-rc.24-arcaven.tar.gz",
+    "tarball_sha256": "47545aaa1713be718655b86fac9c71ccb2e7e231e8c08842a797cf862606716a",
+    "tarball_bytes": 37496705,
+    "file_count": 1276,
+    "file_manifest_sha256": "ea90b780bf665b6bedf299a019ff01a572554e212245da8872b824420643258e",
+    "exec_manifest_sha256": "812ed8973754b079aa942d597681fbf48780dd47dde493c77e2a3fea23f06277"
+  },
+  "signing": {
+    "status": "signed"
+  }
+}

@@ -1,0 +1,206 @@
+{
+  "schema_version": "0.1.4",
+  "schema_stability": "draft",
+  "pack": {
+    "name": "bmad",
+    "version": "6.12.4",
+    "produced_at": "2026-11-11T17:18:51Z",
+    "produced_by": "sideshow-packs/scripts/build-bmad.sh",
+    "packaging_revision": "r3"
+  },
+  "upstream": {
+    "npm_package": "bmad-method@6.12.4",
+    "npm_tarball_url": "https://registry.npmjs.org/bmad-method/-/bmad-method-6.12.4.tgz",
+    "npm_tarball_shasum": "d130cf39dbe184b5cc698c6948f0758ef802f37c",
+    "git_head": "bab9082c3e884e0d72c759bcd1a6d90bcc01be84",
+    "repository": "https://github.com/bmad-code-org/BMAD-METHOD"
+  },
+  "composition": {
+    "modules_from_manifest": [
+      {
+        "name": "core",
+        "version": "6.12.4",
+        "installDate": "2026-11-11T17:18:22.737Z",
+        "lastUpdated": "2026-11-11T17:18:23.512Z",
+        "source": "built-in",
+        "npmPackage": null,
+        "repoUrl": null
+      },
+      {
+        "name": "bmm",
+        "version": "6.12.4",
+        "installDate": "2026-11-11T17:18:22.807Z",
+        "lastUpdated": "2026-11-11T17:18:23.513Z",
+        "source": "built-in",
+        "npmPackage": null,
+        "repoUrl": null
+      },
+      {
+        "name": "cis",
+        "version": "v0.3.2",
+        "installDate": "2026-11-11T17:18:22.827Z",
+        "lastUpdated": "2026-11-11T17:18:23.515Z",
+        "source": "external",
+        "npmPackage": "bmad-creative-intelligence-suite",
+        "repoUrl": "https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite",
+        "channel": "pinned",
+        "sha": "97298b22fee1c7e482710d3a8414adb5cfccccd9"
+      },
+      {
+        "name": "gds",
+        "version": "v0.7.2",
+        "installDate": "2026-11-11T17:18:22.925Z",
+        "lastUpdated": "2026-11-11T17:18:23.517Z",
+        "source": "external",
+        "npmPackage": "bmad-game-dev-studio",
+        "repoUrl": "https://github.com/bmad-code-org/bmad-module-game-dev-studio.git",
+        "channel": "pinned",
+        "sha": "2486f5f5f3b8870baa6cee4615a870c0330f441c"
+      },
+      {
+        "name": "tea",
+        "version": "v1.27.2",
+        "installDate": "2026-11-11T17:18:23.152Z",
+        "lastUpdated": "2026-11-11T17:18:23.519Z",
+        "source": "external",
+        "npmPackage": "bmad-method-test-architecture-enterprise",
+        "repoUrl": "https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise",
+        "channel": "pinned",
+        "sha": "d99ad29c62697c152e3393351406686d5bcd323c"
+      },
+      {
+        "name": "bmb",
+        "version": "v2.2.2",
+        "installDate": "2026-11-11T17:18:23.199Z",
+        "lastUpdated": "2026-11-11T17:18:23.521Z",
+        "source": "external",
+        "npmPackage": "bmad-builder",
+        "repoUrl": "https://github.com/bmad-code-org/bmad-builder",
+        "channel": "pinned",
+        "sha": "4a1422274a2acb0fb0ec0511753da6263948f072"
+      },
+      {
+        "name": "wds",
+        "version": "v0.4.3",
+        "installDate": "2026-11-11T17:18:23.404Z",
+        "lastUpdated": "2026-11-11T17:18:23.522Z",
+        "source": "external",
+        "npmPackage": "bmad-wds",
+        "repoUrl": "https://github.com/bmad-code-org/bmad-method-wds-expansion",
+        "channel": "pinned",
+        "sha": "cc16f09fcfab26d35635af1491f36a38a8431c8d"
+      }
+    ],
+    "tools": [
+      "claude-code"
+    ],
+    "pin_policy": "as-of-release-date",
+    "as_of_date": "2026-10-14T21:20:32.981Z",
+    "requested_pins": {
+      "cis": "v0.3.2",
+      "gds": "v0.7.2",
+      "tea": "v1.27.2",
+      "bmb": "v2.2.2",
+      "wds": "v0.4.3"
+    }
+  },
+  "install_invocation": {
+    "cmd": "npx --yes bmad-method@6.12.4 install",
+    "flags": [
+      "--directory <workdir>",
+      "--modules bmm,cis,gds,tea,bmb,wds",
+      "--tools claude-code",
+      "--action install",
+      "--user-name arcaven-ci",
+      "--output-folder _bmad-output",
+      "--yes"
+    ]
+  },
+  "post_install": {
+    "ci_identity_neutralized": true,
+    "script": "scripts/neutralize-ci-identity.py",
+    "removed_keys": [
+      "user_name",
+      "project_name"
+    ],
+    "rationale": "installer answers reflect the CI build environment, not the consumer; the user_name sentinel (arcaven-ci) and the working-directory project_name are removed from the staged config before packaging so the pack ships no build identity (aae-orc-988gh, aae-orc-m79qn)"
+  },
+  "patches": [
+    {
+      "id": "render-skill-equal-duplicate-keys",
+      "file": "scripts/render_skill.py",
+      "upstream_sha256": "8496d0d8b449d64c21b42a9aab3b13fc8a813a430c0695ffd84ad75bb1da7942",
+      "patched_sha256": "c5abda6f78ed46da5af3382bb520bd1c2e3e4081651adb64c5c5013b5d078f39",
+      "reason": "render_skill.py halts when a short config key matches more than one module even if every match has the same value, so bmad-build and bmad-build-auto cannot start where bmm and gds are both installed; equal values now resolve to one value and unequal values still halt",
+      "upstream_issue": "https://github.com/bmad-code-org/BMAD-METHOD/issues/2718",
+      "pack_issue": "https://github.com/ArcavenAE/sideshow-packs/issues/65",
+      "removed_when": "upstream fixes the issue"
+    },
+    {
+      "id": "wds-skill-prefix",
+      "renames": {
+        "memory": "bmad-wds-memory",
+        "sync": "bmad-wds-sync",
+        "wds-0-alignment-signoff": "bmad-wds-0-alignment-signoff",
+        "wds-0-project-setup": "bmad-wds-0-project-setup",
+        "wds-1-project-brief": "bmad-wds-1-project-brief",
+        "wds-2-trigger-mapping": "bmad-wds-2-trigger-mapping",
+        "wds-3-scenarios": "bmad-wds-3-scenarios",
+        "wds-4-ux-design": "bmad-wds-4-ux-design",
+        "wds-5-agentic-development": "bmad-wds-5-agentic-development",
+        "wds-6-asset-generation": "bmad-wds-6-asset-generation",
+        "wds-7-design-system": "bmad-wds-7-design-system",
+        "wds-8-product-evolution": "bmad-wds-8-product-evolution",
+        "wds-agent-freya-ux": "bmad-wds-agent-freya-ux",
+        "wds-agent-mimir-builder": "bmad-wds-agent-mimir-builder",
+        "wds-agent-saga-analyst": "bmad-wds-agent-saga-analyst"
+      },
+      "commands": {
+        "saga": "bmad-wds-saga",
+        "freya": "bmad-wds-freya",
+        "mimir": "bmad-wds-mimir",
+        "start": "bmad-wds-start",
+        "wrap": "bmad-wds-wrap",
+        "handoff": "bmad-wds-handoff"
+      },
+      "manifest_rows_rewritten": 15,
+      "agents_tables_renamed": [
+        "wds-agent-freya-ux",
+        "wds-agent-mimir-builder",
+        "wds-agent-saga-analyst"
+      ],
+      "skill_references_rewritten": 28,
+      "command_references_rewritten": 47,
+      "reason": "wds skills ship as wds-* plus the bare names memory and sync, and its sync tool installs bare global commands; the bare names shadow Claude Code built-ins and none match the pack's prefix convention, so every wds skill and command is bound as bmad-wds-*, the prefix upstream's help catalog uses",
+      "upstream_issue": "https://github.com/bmad-code-org/bmad-method-wds-expansion/issues/38",
+      "pack_issue": "aae-orc-hdwf4",
+      "removed_when": "upstream ships prefixed wds skill and command names"
+    }
+  ],
+  "acquisition": {
+    "method": "npm-composition",
+    "release_line": "stable"
+  },
+  "artifact": {
+    "tarball": "bmad-6.12.4-r3-arcaven.tar.gz",
+    "tarball_sha256": "7b73b2bb22f736152e42119cb8c77252a78c65b09720aebcc6d888c8b5735465",
+    "tarball_bytes": 5438754,
+    "file_count": 2024,
+    "file_manifest_sha256": "a26f65a2c71e9336c69e0189771a1c1cdc963367b36b2d8dae7507489e98ce86",
+    "exec_manifest_sha256": "f23b3a23d31c9c5816a12cdb14f380b3731c1e729c29cea43dcdf6672b914119",
+    "layout": [
+      "_config/",
+      "core/",
+      "bmm/",
+      "cis/",
+      "gds/",
+      "tea/",
+      "bmb/",
+      "wds/",
+      ".claude/"
+    ]
+  },
+  "signing": {
+    "status": "signed"
+  }
+}
