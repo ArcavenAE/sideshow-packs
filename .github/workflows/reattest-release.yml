@@ -1,0 +1,58 @@
+name: Re-attest release
+
+# Adds a new-format attestation bundle (<tarball>.attest.v2.bundle) to ONE
+# existing release, so sideshow install can read its provenance (aae-orc-hti53).
+# It replaces and deletes nothing, and moves or creates no tag. It runs only by
+# hand, from main, one tag per run; the checks it makes before it signs are in
+# scripts/reattest-release.sh.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing non-draft release tag to re-attest (for example bmad-v6.12.4-r3)"
+        required: true
+        type: string
+
+# id-token: cosign keyless signing. contents: upload the new asset to the release.
+permissions:
+  id-token: write
+  contents: write
+
+concurrency:
+  group: reattest-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  reattest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a  # v2.22.4
+        with:
+          egress-policy: audit
+
+      - name: Require main
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [[ "${REF}" != "refs/heads/main" ]]; then
+            echo "this workflow runs only from refs/heads/main, not ${REF}" >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Install cosign
+        uses: step-security/cosign-installer@7d5ca7d0ecba292387fa6f81cde2c05e53a2a6d7 # v4.1.2
+        with:
+          cosign-release: 'v3.1.2'
+
+      - name: Re-attest the release
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bash scripts/reattest-release.sh
