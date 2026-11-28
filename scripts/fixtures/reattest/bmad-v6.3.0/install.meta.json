@@ -1,0 +1,98 @@
+{
+  "schema_version": "0.1.0",
+  "pack": {
+    "name": "bmad",
+    "version": "6.3.0",
+    "produced_at": "2026-04-26T23:09:31Z",
+    "produced_by": "sideshow-packs/scripts/build-bmad.sh"
+  },
+  "upstream": {
+    "npm_package": "bmad-method@6.3.0",
+    "npm_tarball_url": "https://registry.npmjs.org/bmad-method/-/bmad-method-6.3.0.tgz",
+    "npm_tarball_shasum": "9e658d1539820c6fdc4c5906f473f95b6f463458",
+    "git_head": "7f7690dbfd08304d630c1323cd82b8fe05782ed4",
+    "repository": "https://github.com/bmad-code-org/BMAD-METHOD"
+  },
+  "composition": {
+    "modules_from_manifest": [
+      {
+        "name": "core",
+        "version": "6.3.0",
+        "installDate": "2026-04-26T23:09:16.455Z",
+        "lastUpdated": "2026-04-26T23:09:21.097Z",
+        "source": "built-in",
+        "npmPackage": null,
+        "repoUrl": null
+      },
+      {
+        "name": "bmm",
+        "version": "6.3.0",
+        "installDate": "2026-04-26T23:09:16.645Z",
+        "lastUpdated": "2026-04-26T23:09:21.098Z",
+        "source": "built-in",
+        "npmPackage": null,
+        "repoUrl": null
+      },
+      {
+        "name": "cis",
+        "version": "0.2.0",
+        "installDate": "2026-04-26T23:09:17.099Z",
+        "lastUpdated": "2026-04-26T23:09:21.122Z",
+        "source": "external",
+        "npmPackage": "bmad-creative-intelligence-suite",
+        "repoUrl": "https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite"
+      },
+      {
+        "name": "gds",
+        "version": "0.4.0",
+        "installDate": "2026-04-26T23:09:18.134Z",
+        "lastUpdated": "2026-04-26T23:09:21.143Z",
+        "source": "external",
+        "npmPackage": "bmad-game-dev-studio",
+        "repoUrl": "https://github.com/bmad-code-org/bmad-module-game-dev-studio"
+      },
+      {
+        "name": "tea",
+        "version": "1.15.1",
+        "installDate": "2026-04-26T23:09:19.506Z",
+        "lastUpdated": "2026-04-26T23:09:21.164Z",
+        "source": "external",
+        "npmPackage": "bmad-method-test-architecture-enterprise",
+        "repoUrl": "https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise"
+      }
+    ],
+    "tools": [
+      "claude-code"
+    ]
+  },
+  "install_invocation": {
+    "cmd": "npx --yes bmad-method@6.3.0 install",
+    "flags": [
+      "--directory <workdir>",
+      "--modules bmm,cis,gds,tea",
+      "--tools claude-code",
+      "--action install",
+      "--user-name arcaven-ci",
+      "--output-folder _bmad-output",
+      "--yes"
+    ]
+  },
+  "artifact": {
+    "tarball": "bmad-6.3.0-arcaven.tar.gz",
+    "tarball_sha256": "6b11f72a7670357ff47d0f556084c2874a59cce1deab78313c4787c63f209520",
+    "tarball_bytes": 3479079,
+    "file_count": 1306,
+    "layout": [
+      "_config/",
+      "core/",
+      "bmm/",
+      "cis/",
+      "gds/",
+      "tea/",
+      ".claude/"
+    ]
+  },
+  "signing": {
+    "status": "signed"
+  }
+}
